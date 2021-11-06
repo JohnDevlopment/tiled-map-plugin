@@ -1,0 +1,31 @@
+[gd_scene load_steps=3 format=2]
+
+[ext_resource path="res://addons/tiled_map_loader/ConditionalOption.gd" type="Script" id=1]
+[ext_resource path="res://addons/tiled_map_loader/Input.gd" type="Script" id=2]
+
+[node name="ConditionalOption" type="VBoxContainer"]
+margin_right = 40.0
+margin_bottom = 40.0
+rect_pivot_offset = Vector2( -321, -91 )
+script = ExtResource( 1 )
+__meta__ = {
+"_edit_lock_": true,
+"_edit_use_anchors_": false
+}
+
+[node name="CheckButton" type="CheckButton" parent="."]
+margin_right = 174.0
+margin_bottom = 40.0
+pressed = true
+text = "[Option Name]"
+
+[node name="Input" type="LineEdit" parent="."]
+margin_top = 44.0
+margin_right = 174.0
+margin_bottom = 68.0
+placeholder_text = "[Option Name]"
+script = ExtResource( 2 )
+
+[connection signal="toggled" from="CheckButton" to="." method="_enable_input"]
+[connection signal="focus_exited" from="Input" to="." method="_on_Input_focus_exited"]
+[connection signal="text_entered" from="Input" to="." method="_accept_input"]

@@ -1,0 +1,12 @@
+[gd_scene load_steps=3 format=2]
+
+[ext_resource path="res://addons/tiled_map_loader/ConditionalIntOption.gd" type="Script" id=1]
+[ext_resource path="res://addons/tiled_map_loader/ConditionalOption.tscn" type="PackedScene" id=2]
+
+[node name="ConditionalIntOption" instance=ExtResource( 2 )]
+script = ExtResource( 1 )
+type = "int"
+
+[node name="Input" parent="." index="1"]
+text = "0"
+default_value = "0"
