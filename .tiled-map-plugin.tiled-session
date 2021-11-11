@@ -1,0 +1,136 @@
+{
+    "Map/SizeTest": {
+        "height": 4300,
+        "width": 2
+    },
+    "activeFile": "assets/tilemaps/tiles-inf.json",
+    "expandedProjectPaths": [
+        "assets"
+    ],
+    "file.lastUsedOpenFilter": "All Files (*)",
+    "fileStates": {
+        "/home/john/Godot_projects/mario_fan_game/assets/textures/tilesets/grass/grass.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "/home/john/Godot_projects/mario_fan_game/assets/tilemaps/world1-1.tmx": {
+            "scale": 0.75,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 597.3333333333333,
+                "y": 271.33333333333337
+            }
+        },
+        "/home/john/Godot_projects/mario_fan_game/assets/tilesets/grass.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "/home/john/tiled/grass.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "/home/john/tiled/level.tmx": {
+            "scale": 0.9997983870967742,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 486.0980036297641,
+                "y": 295.5595886267393
+            }
+        },
+        "assets/tilemaps/test.json": {
+            "scale": 4.81861111111111,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 92.45402663284722,
+                "y": 62.362368132818375
+            }
+        },
+        "assets/tilemaps/tiles-5x5-hexagonal.json": {
+            "scale": 5.5,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 94.27272727272728,
+                "y": 72.45454545454545
+            }
+        },
+        "assets/tilemaps/tiles-5x5.json": {
+            "scale": 2,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 130.25,
+                "y": 143.75
+            }
+        },
+        "assets/tilemaps/tiles-inf.json": {
+            "scale": 2,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 4.75,
+                "y": -107.25
+            }
+        },
+        "assets/tilemaps/tiles-inf.tmx": {
+            "scale": 1,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": -111.5,
+                "y": -13.5
+            }
+        },
+        "assets/tilemaps/tiles-staggered-y.json": {
+            "scale": 5.7871980676328505,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 94.43257231103135,
+                "y": 49.33302725489378
+            }
+        },
+        "assets/tilesets/pixel_platformer.tsx": {
+            "scaleInDock": 1.5,
+            "scaleInEditor": 3
+        },
+        "assets/tilesets/tiles-inf.json": {
+            "scale": 1,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": -50.5,
+                "y": -2.5
+            }
+        }
+    },
+    "last.imagePath": "/home/john/github/tiled-map-plugin/assets/textures/tilesets",
+    "map.fixedSize": true,
+    "map.height": 10,
+    "map.lastUsedFormat": "json",
+    "map.orientation": null,
+    "map.tileHeight": 18,
+    "map.tileWidth": 18,
+    "map.width": 10,
+    "mapScene.enableWorlds": false,
+    "openFiles": [
+        "assets/tilesets/pixel_platformer.tsx",
+        "assets/tilemaps/tiles-inf.json",
+        "assets/tilemaps/tiles-staggered-y.json"
+    ],
+    "project": ".tiled-map-plugin.tiled-project",
+    "recentFiles": [
+        "assets/tilesets/pixel_platformer.tsx",
+        "assets/tilemaps/tiles-staggered-y.json",
+        "assets/tilemaps/tiles-inf.json",
+        "assets/tilemaps/test.json",
+        "assets/tilemaps/tiles-5x5-hexagonal.json",
+        "assets/tilemaps/tiles-inf.tmx",
+        "assets/tilemaps/tiles-5x5.json",
+        "assets/tilesets/tiles-inf.json",
+        "/home/john/Godot_projects/mario_fan_game/assets/tilesets/grass.tsx",
+        "/home/john/Godot_projects/mario_fan_game/assets/tilemaps/world1-1.tmx",
+        "/home/john/tiled/grass.tsx",
+        "/home/john/tiled/level.tmx"
+    ],
+    "tileset.lastUsedFormat": "tsx",
+    "tileset.tileSize": {
+        "height": 19,
+        "width": 19
+    },
+    "tileset.useTransparentColor": false
+}
