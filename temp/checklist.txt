@@ -1,9 +1,0 @@
-[x] get_importer_name
-[x] get_visible_name
-[x] get_recognized_extensions
-[x] get_save_extension
-[x] get_resource_type
-[x] get_preset_count
-[x] get_preset_name
-[x] get_import_options
-[ ] import
