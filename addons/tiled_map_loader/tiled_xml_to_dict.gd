@@ -278,7 +278,6 @@ func parse_tile_layer(parser: XMLParser, infinite: bool):
 	
 	if not "x" in data:
 		data.x = 0
-	
 	if not "y" in data:
 		data.y = 0
 	
@@ -290,74 +289,75 @@ func parse_tile_layer(parser: XMLParser, infinite: bool):
 	var encoding = ""
 	var current_chunk = null
 	
-	err = parser.read()
-	while err == OK:
-		if parser.get_node_type() == XMLParser.NODE_ELEMENT_END:
-			if parser.get_node_name() == 'layer':
-				break
-			elif parser.get_node_name() == 'chunk':
-				(data.chunks as Array).push_back(current_chunk)
-				current_chunk = null
-		elif parser.get_node_type() == XMLParser.NODE_ELEMENT:
-			match parser.get_node_name():
-				'chunk':
-					current_chunk = attributes_to_dict(parser)
-					current_chunk.data = []
-					
-					if encoding != '':
-						err = parser.read()
+	if not parser.is_empty():
+		err = parser.read()
+		while err == OK:
+			if parser.get_node_type() == XMLParser.NODE_ELEMENT_END:
+				if parser.get_node_name() == 'layer':
+					break
+				elif parser.get_node_name() == 'chunk':
+					(data.chunks as Array).push_back(current_chunk)
+					current_chunk = null
+			elif parser.get_node_type() == XMLParser.NODE_ELEMENT:
+				match parser.get_node_name():
+					'chunk':
+						current_chunk = attributes_to_dict(parser)
+						current_chunk.data = []
 						
-						if err: return err
-						
-						if encoding != 'csv':
-							current_chunk.data = parser.get_node_data().strip_edges()
-						else:
-							var csv := parser.get_node_data().split(',', false)
-							
-							for v in csv:
-								(current_chunk.data as Array).push_back(int(v.strip_edges()))
-				'data':
-					var attr = attributes_to_dict(parser)
-					
-					if 'compression' in attr:
-						data.compression = attr.compression
-					
-					if 'encoding' in attr:
-						encoding = attr.encoding
-						
-						if attr.encoding != 'csv':
-							data.encoding = attr.encoding
-						
-						if not infinite:
+						if encoding != '':
 							err = parser.read()
 							
-							if err:
-								return err
+							if err: return err
 							
 							if encoding != 'csv':
-								data.data = parser.get_node_data().strip_edges()
+								current_chunk.data = parser.get_node_data().strip_edges()
 							else:
 								var csv := parser.get_node_data().split(',', false)
 								
 								for v in csv:
-									(data.data as Array).push_back(int(v.strip_edges()))
-				'properties':
-					var prop_data = parse_properties(parser)
-					
-					if not(prop_data is Dictionary):
-						return prop_data
-					
-					data.properties = prop_data.properties
-					data.propertytypes = prop_data.propertytypes
-				'tile':
-					var gid := int(parser.get_named_attribute_value_safe('gid'))
-					
-					if infinite:
-						(current_chunk.data as Array).push_back(gid)
-					else:
-						(data.data as Array).push_back(gid)
-		
-		err = parser.read()
+									(current_chunk.data as Array).push_back(int(v.strip_edges()))
+					'data':
+						var attr = attributes_to_dict(parser)
+						
+						if 'compression' in attr:
+							data.compression = attr.compression
+						
+						if 'encoding' in attr:
+							encoding = attr.encoding
+							
+							if attr.encoding != 'csv':
+								data.encoding = attr.encoding
+							
+							if not infinite:
+								err = parser.read()
+								
+								if err:
+									return err
+								
+								if encoding != 'csv':
+									data.data = parser.get_node_data().strip_edges()
+								else:
+									var csv := parser.get_node_data().split(',', false)
+									
+									for v in csv:
+										(data.data as Array).push_back(int(v.strip_edges()))
+					'properties':
+						var prop_data = parse_properties(parser)
+						
+						if not(prop_data is Dictionary):
+							return prop_data
+						
+						data.properties = prop_data.properties
+						data.propertytypes = prop_data.propertytypes
+					'tile':
+						var gid := int(parser.get_named_attribute_value_safe('gid'))
+						
+						if infinite:
+							(current_chunk.data as Array).push_back(gid)
+						else:
+							(data.data as Array).push_back(gid)
+			
+			err = parser.read()
 	
 	return data
 

@@ -6,7 +6,7 @@ var _load_tilemap_dialog
 var _import_plugin: EditorImportPlugin
 
 func _enter_tree() -> void:
-	add_custom_type('TiledMapLoader', 'Node', preload('res://addons/tiled_map_loader/tiled_map_loader.gd'), null)
+	add_custom_type('TiledMapLoader', 'Node2D', preload('res://addons/tiled_map_loader/tiled_map_loader.gd'), null)
 	
 	# Load tileset dialog
 	_new_tileset_dialog = preload('res://addons/tiled_map_loader/NewTilesetDialog.tscn').instance()

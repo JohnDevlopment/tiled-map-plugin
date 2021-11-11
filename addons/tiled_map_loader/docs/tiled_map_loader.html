@@ -208,23 +208,93 @@
 <!-- dbb2de43bcb6db6ff4f7c60dc0e51aa3 -->
                     <div id="constants">
                         <h2>Constants</h2>
-                        <ul><li id="const_<b>TiledXMLToDict</b> = preload('res://addons/tiled_map_loader/tiled_xml_to_dict.gd')"><b>TiledXMLToDict</b> = preload('res://addons/tiled_map_loader/tiled_xml_to_dict.gd') -- A class used to read Tiled files and convert into a dictionary.</li>
-</ul>
+                        <table>
+    <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Value</th>
+        <th>Brief</th>
+    </tr>
+    <tr id="const_TiledXMLToDict">
+    <td>
+        GDScript
+    </td>
+    <td>
+        <b>TiledXMLToDict</b>
+    </td>
+    <td>
+        preload('res://addons/tiled_map_loader/tiled_xml_to_dict.gd')
+    </td>
+    <td>
+        A class used to read Tiled files and convert into a dictionary.
+    </td>
+</tr>
+<tr id="const_FLIPPED_HORIZONTALLY_FLAG">
+    <td>
+        <span class="podtype">int</span>
+    </td>
+    <td>
+        <b>FLIPPED_HORIZONTALLY_FLAG</b>
+    </td>
+    <td>
+        0x80000000
+    </td>
+    <td>
+        Horizontal flip bit (<a href="http://doc.mapeditor.org/reference/tmx-map-format/#tile-flipping">more info</a>)
+    </td>
+</tr>
+<tr id="const_FLIPPED_VERTICALLY_FLAG">
+    <td>
+        <span class="podtype">int</span>
+    </td>
+    <td>
+        <b>FLIPPED_VERTICALLY_FLAG</b>
+    </td>
+    <td>
+        0x40000000
+    </td>
+    <td>
+        Horizontal flip bit (<a href="http://doc.mapeditor.org/reference/tmx-map-format/#tile-flipping">more info</a>)
+    </td>
+</tr>
+<tr id="const_FLIPPED_DIAGONALLY_FLAG">
+    <td>
+        <span class="podtype">int</span>
+    </td>
+    <td>
+        <b>FLIPPED_DIAGONALLY_FLAG</b>
+    </td>
+    <td>
+        0x20000000
+    </td>
+    <td>
+        Diagonal flip bit (<a href="http://doc.mapeditor.org/reference/tmx-map-format/#tile-flipping">http://doc.mapeditor.org/reference/tmx-map-format/#tile-flipping</a>)
+    </td>
+</tr>
+</table>
                     </div>
 <!-- fd3943bb1502d0570e63e2e474747700 -->
                     <div id="methods">
                         <h2>Methods</h2>
-                        <div id="method_build_tileset">
+                        <div id="method_build">
+    <p>&bullet; <span class="podtype">int</span> <b>build</b>(<span class="podtype">String</span> source_path, <span class="podtype">Dictionary</span> options)</p>
+    <p class="brief">Builds a tilemap and adds it as a child.</p><p>...</p><p><i class="argument">options</i> is a dictionary that shall have the following keys. Note: format is <code>name (type) -- description <default></code>.</p><p>* save_tiled_properties (<span class="podtype">bool</span>) -- If true, set tiled properties as meta <false> <br> * custom_properties (<span class="podtype">bool</span>) -- If true, set custom properties as meta <false><br> * clip_uv (<span class="podtype">bool</span>) -- If true, clips the tilemap's UV <false></p>
+</div>
+<div id="method_build_auto">
+    <p>&bullet; <span class="podtype">int</span> <b>build_auto</b>(<span class="podtype">Dictionary</span> options = {})</p>
+    <p class="brief">Builds a tilemap using the properties defined in this class.</p>
+</div>
+<div id="method_build_tileset">
     <p>&bullet; <span class="podtype">Variant</span> <b>build_tileset</b>(<span class="podtype">String</span> source_path, <span class="podtype">Dictionary</span> options = {})</p>
     <p class="brief">Builds a <code class="class">TileSet</code> resource from a TSX file.</p><p>Reads a TSX file located at <i class="argument">source_path</i> and returns a <code class="class">TileSet</code> resource based off of it. If there is an error, then an <span class="podtype">int</span> is returned instead.</p>
 </div>
 <div id="method_build_tileset_from_list">
     <p>&bullet; <span class="podtype">Variant</span> <b>build_tileset_from_list</b>(<span class="podtype">Array</span> tilesets, <span class="podtype">String</span> source_path, <span class="podtype">Dictionary</span> options = {})</p>
-    <p class="brief">Builds a <code class="class">TileSet</code> resource from a TSX file.</p><p>Reads a TSX file located at <i class="argument">source_path</i> and returns a <code class="class">TileSet</code> resource based off of it. If there is an error, then an <span class="podtype">int</span> is returned instead. <i class="argument">tilesets</i> is a list of tileset dictionaries in the format that would be returned by <a href="#method_read_tileset_file">read_tileset_file</a>().</p><p>You can modify the result of this function through the <i class="argument">options</i> dictionary. Below Is a list of options you can pass:<br> * columns = Limit the number of columns per row in the tileset (default: 0)<br> * margin = Add margin around the tileset in pixels (default: 0)<br> * spacing = Spacing between tiles in pixels (default: 0)<br></p>
+    <p class="brief">Builds a <code class="class">TileSet</code> resource from a TSX file.</p><p>Reads a TSX file located at <i class="argument">source_path</i> and returns a <code class="class">TileSet</code> resource based off of it. If there is an error, then an <span class="podtype">int</span> is returned instead. <i class="argument">tilesets</i> is a list of tileset dictionaries in the format that would be returned by <a href="#method_read_tileset_file">read_tileset_file</a>().</p><p>You can modify the result of this function through the <i class="argument">options</i> dictionary. Below Is a list of options you can pass:<br> * columns = Limit the number of columns per row in the tileset (default: 0)<br> * margin = Add margin around the tileset in pixels (default: 0)<br> * spacing = Spacing between tiles in pixels (default: 0)<br> * imageflags = Flags from the enum <code class="enum">Texture</code>.Flags to set the image with (default: 0)</p>
 </div>
 <div id="method_create_layer">
-    <p>&bullet; <span class="podtype">Variant</span> <b>create_layer</b>(<span class="podtype">Dictionary</span> layer, <span class="podtype">Dictionary</span> map_data)</p>
-    <p class="brief">Create a layer.</p><p>Returns a node corresponding to a type of layer being processed. <i class="argument">layer</i> is a <span class="podtype">Dictionary</span> containing data about a layer.</p><p><i class="argument">map_data</i> is a <span class="podtype">Dictionary</span> with information about the whole tilemap that is needed to correctly build the layer. The following keys are recognized:</p><p>* tileset -- A <code class="class">TileSet</code> resource used to build the tilemap<br> * cell_size -- A <span class="complextype">Vector2</span> specifying the size of a tile</p>
+    <p>&bullet; <span class="podtype">int</span> <b>create_layer</b>(<span class="podtype">Dictionary</span> layer, <span class="podtype">Dictionary</span> map_data)</p>
+    <p class="brief">Create a layer.</p><p>Returns a node corresponding to a type of layer being processed. <i class="argument">layer</i> is a <span class="podtype">Dictionary</span> containing data about a layer.</p><p><i class="argument">map_data</i> is a <span class="podtype">Dictionary</span> with information about the whole tilemap that is needed to correctly build the layer. The following keys are recognized:</p><p>* tileset -- A <code class="class">TileSet</code> resource used to build the tilemap<br> * cell_size -- A <span class="complextype">Vector2</span> specifying the size of a tile<br> * options -- A list of options inherited from <a href="#method_build">build</a>()</p>
 </div>
 <div id="method_print_error">
     <p>&bullet; <span class="podtype">Variant</span> <b>print_error</b>(<span class="podtype">String</span> err)</p>
