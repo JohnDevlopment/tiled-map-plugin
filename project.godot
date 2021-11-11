@@ -27,6 +27,7 @@ config/icon="res://icon.png"
 [autoload]
 
 Application="*res://Application.gd"
+History="*res://addons/debug_console/History.gd"
 
 [display]
 
@@ -35,7 +36,7 @@ window/stretch/aspect="keep_height"
 
 [editor_plugins]
 
-enabled=PoolStringArray( "res://addons/Todo_Manager/plugin.cfg", "res://addons/snippets_plugin/plugin.cfg" )
+enabled=PoolStringArray( "res://addons/Todo_Manager/plugin.cfg", "res://addons/godot-plugin-refresher/plugin.cfg", "res://addons/snippets_plugin/plugin.cfg" )
 
 [importer_defaults]
 

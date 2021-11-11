@@ -1,63 +1,18 @@
-[gd_scene load_steps=4 format=2]
+[gd_scene load_steps=3 format=2]
 
 [ext_resource path="res://addons/tiled_map_loader/tiled_map_loader.gd" type="Script" id=1]
 [ext_resource path="res://Main.gd" type="Script" id=2]
-[ext_resource path="res://assets/textures/tilesets/pixel_platformer.png" type="Texture" id=3]
 
 [node name="Main" type="Node2D"]
 script = ExtResource( 2 )
 __meta__ = {
 "_edit_lock_": true
 }
+build_tilemap = true
 
 [node name="TiledMapLoader" type="Node2D" parent="."]
 script = ExtResource( 1 )
-tilemap = "res://assets/tilemaps/base64_uncompressed.tmx"
+tilemap = "res://assets/tilemaps/tiles-inf.json"
 collision_layer = 1
-collision_layer = 1
-
-[node name="ColorRect" type="ColorRect" parent="TiledMapLoader"]
-anchor_right = 1.0
-anchor_bottom = 1.0
-margin_right = 557.0
-margin_bottom = 500.0
-color = Color( 0.054902, 1, 0.976471, 1 )
-__meta__ = {
-"_edit_use_anchors_": false
-}
-
-[node name="Button" type="Button" parent="."]
-visible = false
-margin_left = 250.0
-margin_top = 30.0
-margin_right = 361.0
-margin_bottom = 50.0
-text = "Import Tilemap"
-__meta__ = {
-"_edit_use_anchors_": false
-}
-
-[node name="Label" type="Label" parent="."]
-margin_left = 516.0
-margin_top = 35.0
-margin_right = 556.0
-margin_bottom = 49.0
-text = "Text"
-__meta__ = {
-"_edit_use_anchors_": false
-}
-
-[node name="Camera2D" type="Camera2D" parent="."]
-anchor_mode = 0
-current = true
-zoom = Vector2( 0.5, 0.5 )
-limit_left = 0
-limit_top = 0
-
-[node name="PixelPlatformer" type="Sprite" parent="."]
-position = Vector2( 450, 77 )
-texture = ExtResource( 3 )
-region_enabled = true
-region_rect = Rect2( 0, 162, 75, 72 )
-
-[connection signal="pressed" from="Button" to="." method="_on_Button_pressed"]
+collision_mask = 0
+options/correct_map = false

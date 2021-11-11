@@ -19,16 +19,21 @@ var collision_mask := 1
 # @type String
 var tilemap := ''
 
+var correct_map := false
+
 const ERROR_PREFIX := "Tiled Map Loader: "
 
-# Constants for tile flipping
-# http://doc.mapeditor.org/reference/tmx-map-format/#tile-flipping
-const FLIPPED_HORIZONTALLY_FLAG = 0x80000000
-const FLIPPED_VERTICALLY_FLAG   = 0x40000000
-const FLIPPED_DIAGONALLY_FLAG   = 0x20000000
+## Horizontal flip bit (@link{http://doc.mapeditor.org/reference/tmx-map-format/#tile-flipping}{more info})
+const FLIPPED_HORIZONTALLY_FLAG: int = 0x80000000
+
+## Horizontal flip bit (@link{http://doc.mapeditor.org/reference/tmx-map-format/#tile-flipping}{more info})
+const FLIPPED_VERTICALLY_FLAG: int = 0x40000000
+
+## Diagonal flip bit (@link{http://doc.mapeditor.org/reference/tmx-map-format/#tile-flipping})
+const FLIPPED_DIAGONALLY_FLAG: int = 0x20000000
 
 var _tileset_path_to_first_gid := {}
-var _loaded_templates := {}
+#var _loaded_templates := {} # TODO: this is for when templates are handled
 
 const WHITELIST_PROPERTIES := PoolStringArray([
 	"backgroundcolor",
@@ -62,6 +67,8 @@ func _get(property: String):
 			return collision_layer
 		'collision_mask':
 			return collision_mask
+		'options/correct_map':
+			return correct_map
 
 func _set(property: String, value) -> bool:
 	match property:
@@ -71,9 +78,11 @@ func _set(property: String, value) -> bool:
 			collision_layer = value
 		'collision_mask':
 			collision_mask = value
+		'options/correct_map':
+			correct_map = value
 		_:
 			return false
-	
+
 	return true
 
 func _get_property_list() -> Array:
@@ -102,10 +111,15 @@ func _get_property_list() -> Array:
 			hint = PROPERTY_HINT_LAYERS_2D_PHYSICS
 		},
 		{
-			name = 'collision_layer',
+			name = 'collision_mask',
 			type = TYPE_INT,
 			usage = PROPERTY_USAGE_DEFAULT,
 			hint = PROPERTY_HINT_LAYERS_2D_PHYSICS
+		},
+		{
+			name = 'options/correct_map',
+			type = TYPE_BOOL,
+			usage = PROPERTY_USAGE_DEFAULT
 		}
 	]
 
@@ -116,14 +130,16 @@ func _get_property_list() -> Array:
 #       @code{name (type) -- description <default>}.
 #
 #       * save_tiled_properties (bool) -- If true, set tiled properties as meta <false> @br
-#       * custom_properties (bool) -- If true, set custom properties as meta <false>
+#       * custom_properties (bool) -- If true, set custom properties as meta <false>@br
+#       * clip_uv (bool) -- If true, clips the tilemap's UV <false>
 func build(source_path: String, options: Dictionary) -> int:
 	var err := OK
 	reset_global_members()
 	
 	set_options_defaults(options, {
 		save_tiled_properties = false,
-		custom_properties = false
+		custom_properties = false,
+		clip_uv = false
 	})
 	
 	# Read and validate tilemap
@@ -143,11 +159,65 @@ func build(source_path: String, options: Dictionary) -> int:
 	if options.custom_properties:
 		set_custom_properties(self, map)
 	
+	# Offset of each tile
+	var cell_offset := Vector2()
+	
+	# Size of each tile
+	var cell_size := Vector2(int(map.tilewidth), int(map.tileheight))
+	
+	# Offset of the entire map
+	var map_pos_offset := Vector2()
+	
+	# Half offset flag for TileMap
+	var map_offset := TileMap.HALF_OFFSET_DISABLED
+	
+	# Map mode
+	var map_mode : int = TileMap.MODE_SQUARE
+	if 'orientation' in map:
+		match map.orientation:
+			'isometric':
+				map_mode = TileMap.MODE_ISOMETRIC
+			'staggered':
+				# isometric staggered
+				map_pos_offset.y -= cell_size.y / 2
+				match map.staggeraxis:
+					'x':
+						map_offset = TileMap.HALF_OFFSET_Y
+						cell_size.x /= 2
+						if map.staggerindex == 'even':
+							cell_offset.x += 1
+							map_pos_offset.x -= cell_size.x
+					'y':
+						map_offset = TileMap.HALF_OFFSET_X
+						cell_size.y /= 2
+						if map.staggerindex == 'even':
+							cell_offset.y += 1
+							map_pos_offset.y -= cell_size.y
+			'hexagonal':
+				# hexagonal staggered
+				match map.staggeraxis:
+					'x':
+						map_offset = TileMap.HALF_OFFSET_Y
+						cell_size.x = int((cell_size.x + map.hexsidelength) / 2)
+						if map.staggerindex == 'even':
+							cell_offset.x += 1
+							map_pos_offset.x -= cell_size.x
+					'y':
+						map_offset = TileMap.HALF_OFFSET_X
+						cell_size.x = int((cell_size.y + map.hexsidelength) / 2)
+						if map.staggerindex == 'even':
+							cell_offset.y += 1
+							map_pos_offset.y -= cell_size.y
+	
 	# Global map data
 	var map_data := {
 		tileset = tileset,
-		cell_size = Vector2(map.tilewidth, map.tileheight),
-		options = options
+		cell_size = cell_size,
+		options = options,
+		infinite = map.infinite,
+		map_offset = map_offset,
+		map_pos_offset = map_pos_offset,
+		cell_offset = cell_offset
 	}
 	
 	for layer in map.layers:
@@ -156,8 +226,8 @@ func build(source_path: String, options: Dictionary) -> int:
 	
 	return OK
 
-func build_auto(options: Dictionary = {}) -> int:
-	return build(tilemap, options)
+## Builds a tilemap using the properties defined in this class.
+func build_auto(options: Dictionary = {}) -> int: return build(tilemap, options)
 
 ## Builds a @class TileSet resource from a TSX file.
 # @desc Reads a TSX file located at @a source_path and returns a @class TileSet resource based
@@ -166,9 +236,9 @@ func build_tileset(source_path: String, options: Dictionary = {}):
 	var tileset = read_tileset_file(source_path)
 	if not tileset is Dictionary:
 		return tileset
-	
+
 	tileset['firstgid'] = 0
-	
+
 	return build_tileset_from_list([tileset], source_path, options)
 
 ## Builds a @class TileSet resource from a TSX file.
@@ -212,7 +282,7 @@ func build_tileset_from_list(tilesets: Array, source_path: String, options: Dict
 			
 			# NOTE: This is apparently used for templates later on.
 			_tileset_path_to_first_gid[ts_source_path] = ts.firstgid
-		
+			
 		err = validate_tileset(ts)
 		if err: return err
 		
@@ -273,7 +343,7 @@ func build_tileset_from_list(tilesets: Array, source_path: String, options: Dict
 				var apply_offset: bool = options.get('apply_offset', false)
 				if apply_offset:
 					result.tile_set_texture_offset(gid, Vector2(0, -image.get_height()))
-			
+				
 			if 'tiles' in ts and rel_id in ts.tiles and 'objectgroup' in ts.tiles[rel_id] and 'objects' in ts.tiles[rel_id].objectgroup:
 				for object in ts.tiles[rel_id].objectgroup.objects:
 					var shape = shape_from_object(object)
@@ -291,14 +361,12 @@ func build_tileset_from_list(tilesets: Array, source_path: String, options: Dict
 							
 							if apply_offset:
 								offset += result.tile_get_texture_offset(gid)
-							
+
 							if 'width' in object and 'height' in object:
 								offset += Vector2(float(object.width) / 2.0, float(object.height) / 2.0)
 							
-#							print("result.tile_add_shape(%d, %s, %s, %s" % [gid, shape, Transform2D(0.0, offset), object.type == 'one_way'])
-							
 							result.tile_add_shape(gid, shape, Transform2D(0.0, offset), object.type == 'one_way')
-			
+					
 			gid += 1
 			column += 1
 			x += int(tile_size.x) + spacing
@@ -307,7 +375,7 @@ func build_tileset_from_list(tilesets: Array, source_path: String, options: Dict
 				x = margin
 				y += int(tile_size.y) + spacing
 				column = 0
-		
+			
 		# Name of the tileset
 		if str(ts.name) != '':
 			result.resource_name = str(ts.name)
@@ -329,13 +397,14 @@ func create_layer(layer: Dictionary, map_data: Dictionary) -> int:
 	
 	if err: return err
 	
-	var tileset: TileSet = map_data.tileset
-	var cell_size: Vector2 = map_data.cell_size
-	
 	var opacity: float = layer.get('opacity', 1.0)
 	var visible: bool = layer.get('visible', true)
-	var infinite: bool = layer.get('infinite', false)
+	
+	var tileset: TileSet = map_data.tileset
+	var cell_size: Vector2 = map_data.cell_size
+	var infinite: bool = map_data.infinite
 	var options: Dictionary = map_data.options
+	var cell_offset : Vector2 = map_data.cell_offset
 	
 	match layer.type:
 		'tilelayer':
@@ -348,6 +417,17 @@ func create_layer(layer: Dictionary, map_data: Dictionary) -> int:
 			tilemap.name = layer.name
 			tilemap.modulate = Color(1, 1, 1, opacity)
 			tilemap.tile_set = tileset
+			tilemap.cell_tile_origin = TileMap.TILE_ORIGIN_BOTTOM_LEFT
+			tilemap.cell_half_offset = map_data.map_offset
+			tilemap.cell_clip_uv = options.clip_uv
+			
+			var offset := Vector2()
+			if 'startx' in layer:
+				offset.x = layer.startx
+			if 'starty' in layer:
+				offset.y = layer.starty
+			
+			tilemap.position = offset # + map_pos_offset
 			
 			# Get array of chunks
 			var chunks := []
@@ -375,10 +455,11 @@ func create_layer(layer: Dictionary, map_data: Dictionary) -> int:
 					var int_id: int = int(tile_id)
 					
 					# Empty tile
-					if not int_id:
+					if int_id == 0:
 						count += 1
 						continue
 					
+					# Isolate the tile flipping flags
 					var tile_flags := {
 						flipped_y = bool(int_id & FLIPPED_VERTICALLY_FLAG),
 						flipped_x = bool(int_id & FLIPPED_HORIZONTALLY_FLAG),
@@ -387,12 +468,10 @@ func create_layer(layer: Dictionary, map_data: Dictionary) -> int:
 					
 					var gid: int = int_id & ~(FLIPPED_VERTICALLY_FLAG | FLIPPED_HORIZONTALLY_FLAG | FLIPPED_DIAGONALLY_FLAG)
 					
-					var cell := Vector2(
-						chunk.x + (count % int(chunk.width)),
-						chunk.y + int(count / chunk.width)
-					)
+					var cell_x : int = cell_offset.x + chunk.x + (count % int(chunk.width))
+					var cell_y : int = cell_offset.y + chunk.y + int(count / chunk.width)
 					
-					tilemap.set_cell(cell.x, cell.y, gid, tile_flags.flipped_x, tile_flags.flipped_y, tile_flags.flipped_d)
+					tilemap.set_cell(cell_x, cell_y, gid, tile_flags.flipped_x, tile_flags.flipped_y, tile_flags.flipped_d)
 					
 					count += 1
 			
@@ -412,43 +491,43 @@ func create_layer(layer: Dictionary, map_data: Dictionary) -> int:
 func load_image(rel_path: String, source_path: String, options: Dictionary = {}):
 	var embed: bool = options.get('embed_internal_images', false)
 	var flags: int = options.get('flags', Texture.FLAGS_DEFAULT)
-	
+
 	# Invalid extensions
 	var ext := rel_path.get_extension().to_lower()
 	if ext != "png" and ext != "jpg":
 		print_error("Unsupported image format: %s. Use PNG or JPG instead." % [ext])
 		return ERR_FILE_UNRECOGNIZED
-	
+
 	var total_path := rel_path
 	if rel_path.is_rel_path():
 		# Turn relative path into a global (OS-specific) path
 		total_path = ProjectSettings.globalize_path(source_path.get_base_dir()).plus_file(rel_path)
 	# Turn path into one like res:// that Godot will understand
 	total_path = ProjectSettings.localize_path(total_path)
-	
+
 	# File does not exist = error
 	if true:
 		var dir := Directory.new()
 		if not dir.file_exists(total_path):
 			print_error("Image not found: '%s'." % total_path)
 			return ERR_FILE_NOT_FOUND
-	
+
 	if not total_path.begins_with('res://'):
 		embed = true # external image
-	
+
 	var image = null
 	if embed:
 		var temp := Image.new()
 		temp.load(total_path) # can load external paths
-		
+
 		image = ImageTexture.new()
 		(image as ImageTexture).create_from_image(temp, flags)
 	else:
 		image = ResourceLoader.load(total_path, "ImageTexture")
-	
+
 	if image:
 		image.set_flags(flags)
-	
+
 	return image
 
 ## Prints an error.
@@ -462,30 +541,30 @@ static func print_error(err: String) -> void:
 
 func decode_layer(layer_data: PoolByteArray) -> Array:
 	var result := []
-	
+
 	for i in range(0, layer_data.size(), 4):
 		var num: int = (layer_data[i]) | (layer_data[i + 1] << 8) | (layer_data[i + 2] << 16) | (layer_data[i + 3] << 24)
 		result.push_back(num)
-	
+
 	return result
 
 func decompress_layer(layer_data: String, compression: String, map_size: Vector2):
 	if compression != 'zlib' and compression != 'gzip':
 		print_error("Invalid compression '%s', must be zlib or gzip." % compression)
 		return ERR_INVALID_PARAMETER
-	
+
 	var expected_size: int = int(map_size.x) * int(map_size.y) * 4
 	var compression_type := File.COMPRESSION_DEFLATE if compression == 'zlib' else File.COMPRESSION_GZIP
 	var data := Marshalls.base64_to_raw(layer_data).decompress(expected_size, compression_type)
-	
+
 	return decode_layer(data)
 
 func get_custom_properties(properties: Dictionary, types: Dictionary) -> Dictionary:
 	var result := {}
-	
+
 	for property in properties:
 		var value = null
-		
+
 		match (types[property] as String).to_lower():
 			'bool':
 				value = bool(properties[property])
@@ -497,9 +576,9 @@ func get_custom_properties(properties: Dictionary, types: Dictionary) -> Diction
 				value = Color(properties[property])
 			_:
 				value = properties[property]
-		
+
 		result[property] = value
-	
+
 	return result
 
 func read_base64_layer(layer_data: String) -> Array:
@@ -516,25 +595,25 @@ func read_tilemap_file(path: String):
 	if path.get_extension().to_lower() == 'tmx':
 		var tmx_to_dict := TiledXMLToDict.new()
 		var data = tmx_to_dict.read_tmx(path)
-		
+
 		if not data is Dictionary:
 			print_error("Error parsing tilemap file '%s'." % path)
-		
+
 		return data
-	
+
 	var file := File.new()
-	
+
 	var content = file.open(path, File.READ)
 	if content: return content
-	
+
 	content = file.get_as_text()
 	file.close()
-	
+
 	content = JSON.parse(content)
 	if content.error:
 		print_error("Error parsing JSON file '%s': %s" % [path, content.error_string])
 		return content.error
-	
+
 	return content.result
 
 ## Reads a Tiled tileset file.
@@ -548,38 +627,39 @@ func read_tileset_file(path: String):
 	if path.get_extension().to_lower() == 'tsx':
 		var tmx_to_dict := TiledXMLToDict.new()
 		var data = tmx_to_dict.read_tsx(path)
-		
+
 		if not data is Dictionary:
 			print_error("Error parsing tileset file '%s'." % path)
-		
+
 		return data # either a dict or an integer
-	
+
 	var file := File.new()
-	
+
 	var content = file.open(path, File.READ)
 	if content: return content
-	
+
 	content = file.get_as_text()
 	file.close()
-	
+
 	# Parse the contents of the file as JSON text
 	content = JSON.parse(content)
 	if content.error:
 		print_error("Error parsing JSON: " + content.error_string)
 		return content.error
-	
+
 	return content.result
 
 func reset_global_members() -> void:
 	_tileset_path_to_first_gid = {}
-	_loaded_templates = {}
+	# TODO: this is for when templates are handled
+#	_loaded_templates = {}
 
 func set_custom_properties(object: Object, tiled_object: Dictionary) -> void:
 	if not 'properties' in tiled_object or not 'propertytypes' in tiled_object:
 		return
-	
+
 	var properties := get_custom_properties(tiled_object.properties, tiled_object.propertytypes)
-	
+
 	for property in properties:
 		object.set_meta(property, properties[property])
 
@@ -594,30 +674,30 @@ func set_obj_default_params(object: Dictionary) -> void:
 func set_options_defaults(options: Dictionary, params: Dictionary) -> void:
 	var keys := params.keys()
 	var defaults := params
-	
+
 	for k in keys:
 		if not k in options:
 			options[k] = defaults[k]
 
 func shape_from_object(object: Dictionary):
 	var shape = ERR_INVALID_DATA
-	
+
 	set_obj_default_params(object)
-	
+
 	if 'polygon' in object or 'polyline' in object:
 		pass # TODO: make a polygon or polyline shape
 	elif 'ellipse' in object:
 		if object.type in ['navigation', 'occluder']:
 			print_error("Invalid object type '%s'. Navigation and occluders do not accept ellipse shapes." % object.type)
 			return ERR_INVALID_DATA
-		
+
 		if not 'width' in object or not 'height' in object:
 			print_error("Missing width or height property in ellipse shape")
 			return ERR_INVALID_DATA
-		
+
 		var w := float(object.width)
 		var h := float(object.height)
-		
+
 		if w == h:
 			shape = CircleShape2D.new()
 			shape.radius = w / 2.0
@@ -629,9 +709,9 @@ func shape_from_object(object: Dictionary):
 		if not 'width' in object or not 'height' in object:
 			print_error("Missing width or height property in rectangle shape")
 			return ERR_INVALID_DATA
-		
+
 		var size := Vector2(object.width, object.height)
-		
+
 		if object.type in ['navigation', 'occluder']:
 			pass # TODO: make navigation and occluder shapes
 		else:
@@ -643,7 +723,7 @@ func shape_from_object(object: Dictionary):
 				Vector2(0, size.y)
 			])
 			shape.set_point_cloud(points)
-	
+
 	return shape
 
 func set_tiled_properties_as_meta(object: Object, tiled_object: Dictionary) -> void:
@@ -658,7 +738,7 @@ func validate_layer(layer: Dictionary) -> int:
 	elif not 'name' in layer:
 		print_error("Missing or invalid name type property.")
 		return ERR_INVALID_DATA
-	
+
 	match layer.type:
 		'grouplayer':
 			if not 'layers' in layer or not layer.layers is Array:
@@ -677,7 +757,7 @@ func validate_layer(layer: Dictionary) -> int:
 				if not f in layer or not (layer[f] as String).is_valid_integer():
 					print_error("Missing or invalid layer %s property." % f)
 					return ERR_INVALID_DATA
-			
+
 			if not 'data' in layer:
 				if not 'chunks' in layer:
 					print_error('Missing data or chunks layer property.')
@@ -695,16 +775,44 @@ func validate_layer(layer: Dictionary) -> int:
 			elif not layer.data is Array:
 				print_error('Invalid base64 tile layer data.')
 				return ERR_INVALID_DATA
-			
+
 			if 'compression' in layer:
 				if layer.compression != 'gzip' and layer.compression != 'zlib':
 					print_error("Invalid compression '%s'." % layer.compression)
 					return ERR_INVALID_DATA
-	
+
 	return OK
 
 func validate_tilemap(tilemap: Dictionary) -> int:
+	for attr in ['version', 'tiledversion']:
+		if not attr in tilemap or int(tilemap[attr]) != 1:
+			print_error("Missing or invalid '%s' property in tilemap." % attr)
+			return ERR_INVALID_DATA
 	
+	for attr in ['width', 'height', 'tilewidth', 'tileheight', 'nextlayerid', 'nextobjectid']:
+		if not attr in tilemap or not (tilemap[attr] as String).is_valid_integer():
+			print_error("Missing or invalid '%s' property in tilemap." % attr)
+			return ERR_INVALID_DATA
+	
+	if not 'type' in tilemap or tilemap.type != 'map':
+		print_error("Missing or invalid 'type' property in tilemap.")
+		return ERR_INVALID_DATA
+	
+	if not 'infinite' in tilemap:
+		print_error("Missing 'infinite' property in tilemap.")
+		return ERR_INVALID_DATA
+	
+	if not 'orientation' in tilemap or not tilemap.orientation in ['orthogonal', 'isometric', 'staggered', 'hexagonal']:
+		print_error("Missing or invalid 'orientation' property in tilemap.")
+		return ERR_INVALID_DATA
+	
+	if not 'layers' in tilemap or typeof(tilemap.layers) != TYPE_ARRAY:
+		print_error("Missing or invalid 'layers' property in tilemap.")
+		return ERR_INVALID_DATA
+	
+	if not 'tilesets' in tilemap or typeof(tilemap.tilesets) != TYPE_ARRAY:
+		print_error("Missing or invalid 'tilesets' property in tilemap.")
+		return ERR_INVALID_DATA
 	
 	return OK
 
@@ -716,7 +824,7 @@ func validate_tileset(tileset: Dictionary) -> int:
 		if not(k in tileset) or not (tileset[k] as String).is_valid_integer():
 			print_error("Missing or invalid tileset '%s' property." % k)
 			return ERR_INVALID_DATA
-	
+
 	if not 'image' in tileset:
 		for tile in tileset.tiles:
 			if not 'image' in tileset.tiles[tile]:
@@ -735,5 +843,5 @@ func validate_tileset(tileset: Dictionary) -> int:
 		elif not 'imageheight' in tileset or not str(tileset.imageheight).is_valid_integer():
 			print_error("Missing or invalid 'imageheight' property in tileset.")
 			return ERR_INVALID_DATA
-	
+
 	return OK
