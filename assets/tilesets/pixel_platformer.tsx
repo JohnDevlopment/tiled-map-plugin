@@ -1,6 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <tileset version="1.5" tiledversion="1.7.2" name="pixel_platformer" tilewidth="18" tileheight="18" tilecount="260" columns="20">
  <image source="../textures/tilesets/pixel_platformer.png" width="360" height="234"/>
+ <tile id="125" probability="0.5"/>
+ <tile id="153">
+  <objectgroup draworder="index" id="2">
+   <object id="2" type="one_way" x="0" y="0">
+    <polygon points="0,0 11.625,14.125 17.875,9.5 17.875,-0.5"/>
+   </object>
+  </objectgroup>
+ </tile>
+ <tile id="154">
+  <objectgroup draworder="index" id="2">
+   <object id="1" type="one_way" x="0" y="0">
+    <polygon points="0,0 18,0 18,10.875 9.875,16.75 0,11.875"/>
+   </object>
+  </objectgroup>
+ </tile>
+ <tile id="182">
+  <objectgroup draworder="index" id="2">
+   <object id="1" x="0" y="0" width="18" height="18"/>
+  </objectgroup>
+ </tile>
  <wangsets>
   <wangset name="grass ledge platforms" type="edge" tile="-1">
    <wangcolor name="grass" color="#ff0000" tile="-1" probability="1"/>

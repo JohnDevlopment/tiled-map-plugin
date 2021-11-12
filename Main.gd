@@ -9,13 +9,19 @@ const CAMERA_SPEED := 50
 export var build_tilemap := false
 
 onready var tilemap_loader = $TiledMapLoader
+onready var debug_console = $CanvasLayer/DebugConsole
 
 func _ready() -> void:
 	if build_tilemap:
-		var err : int = tilemap_loader.build_auto()
-		if err:
+		var err = tilemap_loader.build_auto()
+		if err == null:
 			tilemap_loader.queue_free()
 			print('failed')
+
+func _unhandled_key_input(event: InputEventKey) -> void:
+	if event.is_action_pressed('ui_debug'):
+		get_tree().set_input_as_handled()
+		debug_console.activate()
 
 #func _process(delta: float) -> void:
 #	var vec : Vector2 = Input.get_vector('ui_left', 'ui_right', 'ui_up', 'ui_down')

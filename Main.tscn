@@ -1,7 +1,23 @@
-[gd_scene load_steps=3 format=2]
+[gd_scene load_steps=6 format=2]
 
 [ext_resource path="res://addons/tiled_map_loader/tiled_map_loader.gd" type="Script" id=1]
 [ext_resource path="res://Main.gd" type="Script" id=2]
+[ext_resource path="res://addons/debug_console/DebugConsole.tscn" type="PackedScene" id=4]
+[ext_resource path="res://scenes/components/TileMap_18x18_half-bl_no-coll_no-occ.tscn" type="PackedScene" id=5]
+
+[sub_resource type="GDScript" id=1]
+script/source = "extends Node
+
+const valid_commands := [
+	[\"test\", [], []]
+]
+
+var remote_nodes := []
+var parent_node: Node
+
+func test() -> String:
+	return \"Called the test function.\"
+"
 
 [node name="Main" type="Node2D"]
 script = ExtResource( 2 )
@@ -12,7 +28,25 @@ build_tilemap = true
 
 [node name="TiledMapLoader" type="Node2D" parent="."]
 script = ExtResource( 1 )
-tilemap = "res://assets/tilemaps/tiles-inf.json"
+tilemap = "res://assets/tilemaps/tiles-inf-compressed.tmx"
 collision_layer = 1
 collision_mask = 0
 options/correct_map = false
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="DebugConsole" parent="CanvasLayer" instance=ExtResource( 4 )]
+visible = false
+margin_right = -195.0
+margin_bottom = -106.0
+command_script = SubResource( 1 )
+
+[node name="TileMap" parent="." instance=ExtResource( 5 )]
+visible = false
+
+[node name="Camera2D" type="Camera2D" parent="."]
+anchor_mode = 0
+current = true
+zoom = Vector2( 0.7, 0.7 )
+limit_left = 0
+limit_top = 0

@@ -221,8 +221,12 @@ static func parse_properties(parser: XMLParser):
 
 func parse_tile_data(parser: XMLParser):
 	var data := {}
-	var err := parser.read()
+	var err := OK
 	var obj_group := {}
+	
+	if parser.is_empty(): return data
+	
+	err = parser.read()
 	
 	while err == OK:
 		if parser.get_node_type() == XMLParser.NODE_ELEMENT_END:
@@ -268,6 +272,8 @@ func parse_tile_data(parser: XMLParser):
 					data.propertytypes = prop_data.propertytypes
 		
 		err = parser.read()
+	
+	return data
 
 func parse_tile_layer(parser: XMLParser, infinite: bool):
 	var data := attributes_to_dict(parser)
@@ -376,10 +382,11 @@ func parse_tileset(parser: XMLParser):
 			match parser.get_node_name():
 				'tile':
 					var attr := attributes_to_dict(parser)
+					
 					var tile_data = parse_tile_data(parser)
 					if not(tile_data is Dictionary):
-						# Error happened
-						return tile_data
+						return tile_data # error happened
+					
 					if 'properties' in tile_data and 'propertytypes' in tile_data:
 						if not('tileproperties' in data):
 							data.tileproperties = {}

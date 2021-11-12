@@ -1,3 +1,11 @@
+## Debug console
+# @name DebugConsole
+# @desc A debug console that you can use for general-purpose testing.
+#
+#       The recommended way to use this console is to put it under a @class CanvasLayer
+#       node and hide it from the editor. Then make sure that whenever you want to show
+#       the console, @function activate() is called. If done correctly, the console should
+#       look something like this: @img{images/DebugConsole_img2.png}
 extends Control
 
 const StringCommand : Reference = preload('res://addons/debug_console/StringCommand.gd')
@@ -6,6 +14,37 @@ const ErrorInfo : Reference = preload('res://addons/debug_console/ErrorInfo.gd')
 signal console_destroyed
 signal console_command(code, args)
 
+## A script which provides a list of user-defined commands for the console to parse.
+# @type Script
+# @desc There is a particular syntax when it comes to this script.
+#       First, there needs to be an array called @i valid_commands: it should
+#       be a constant, but using a mutable variable will not produce an error.
+#       Second, there must be a variable named @i remote_nodes, and unlike the
+#       previous must be editable. Third, there should be a variable called
+#       @i parent_node: it shall accept a reference to this console node. To avoid
+#       errors with types, you should make the variable Variant or @class Node. Lastly,
+#       the script must extend from @class Node.
+#
+#       The @i valid_commands array has a particular structure that must be
+#       respected. Each element is a nested array with three elements:
+#       @code{[ String command, [?int param1 ... int paramN?], [?String param1 ... String paramN?]}@br
+#       The first element is the name of a function which shall exist in the same script. Next
+#       is a list of integers that denote parameter types: use a constant of @enum Variant.Type or -1
+#       to make it a Variant. Finally, the third element is a list of parameter names which correspond
+#       to the second element.
+#
+#       When a command is evaluated, a function of the same name is called with the parameters
+#       pulled from the input box. Parameters are interpreted as strings by default unless they
+#       take forms that are valid for other types, in which case they are converted to the appropriate
+#       type. See below for a list of supported types and what kind of strings are converted. The
+#       function is expected to return a String, event an empty one, as that return value is the
+#       output of the command printed to the console.
+#
+#       Imagine you have a function that takes an int called @function test. The command of the same
+#       same name will be called with the first parameter interpreted as an integer. Should the conversion
+#       fail, an error is produced.
+#
+#       To see what types there are, type "/types" in the console window.
 export(Script) var command_script
 
 export(Array, NodePath) var remote_nodes
@@ -14,13 +53,12 @@ onready var input_field = $VBoxContainer/InputField
 onready var output_box = $VBoxContainer/HBoxContainer/Output
 onready var command_handler = $CommandHandler
 
-const _builtin_commands: = [
-	[ "/help",  [],   [] ],
-	[ "/print", [-1], ["value"] ],
-	[ "/test",  [],   [] ],
-	[ "/types", [],   [] ],
-	[ "/exit", [], [] ]
-]
+#const _builtin_commands: = [
+#	[ "/help",  [],   [] ],
+#	[ "/print", [-1], ["value"] ],
+#	[ "/types", [],   [] ],
+#	[ "/exit", [], [] ]
+#]
 
 var command_list: = []
 var active: = false
@@ -32,7 +70,7 @@ func _ready():
 	
 	command_handler.set_script(command_script)
 	
-	if not command_handler.get("valid_commands"):
+	if command_handler.get("valid_commands") == null:
 		push_error("no 'valid_commands' array defined in command script")
 		queue_free()
 		return
@@ -51,16 +89,20 @@ func _ready():
 	output_box.add_keyword_color("vector2", Color("#43E44A"))
 	set_process(false)
 
+## Activates the debug console.
+# @desc Call this once to activate the console. Pauses the scene tree and grabs focus.
 func activate():
 	History.current_index = History.history.size()
-	visible = true
+	show()
 	set_process(true)
 	get_tree().paused = true
 	input_field.grab_focus()
 	active = true
 
+## Deactivates the debug console.
+# @desc Call this function to hide the debug console and to unpause the scene tree.
 func deactivate():
-	visible = false
+	hide()
 	input_field.release_focus()
 	set_process(false)
 	get_tree().paused = false
@@ -76,18 +118,18 @@ func goto_history_line(offset: int):
 		input_field.call_deferred("set_cursor_position", 9999)
 		input_field.grab_focus()
 
-# Outputs the text string to the multiline text window. If the text consists
-# of a string in the format of "@xxxxxx:", where x is any lowercase letter,
-# then a special formatted error message is produced.
-# List:
-#   @argcount:X:Y -- output: "Error: expected X parameters but only got Y"
-#      A generic parameter count message. May be removed since StringCommand
-#      automatically checks parameter count and prints this message.
-#   @arrayneed:P:C -- output: "Error: '%P' expects C values"
-#      Use this when a parameter is an array and it isn't provided the right
-#      amount of values.
-#   @error:MSG -- output: "Error: MSG"
-#      A generic error message.
+## Output text to the console.
+# @desc Writes the string @a text to the console text window. If a text begins with
+#       an at-sign it is interpreted as a message to be specially formatted.
+#
+#       @at argcount:X:Y -- Generates an error message about the number of arguments.
+#       @i X is the number of arguments expected, and @i Y is the the number of arguments
+#       received.
+#
+#       @at arrayneed:P:C -- Generates an error message about the array @i P does not
+#       have enough data. (It expects @i C elements.)
+#
+#       @at error:MSG -- Generates an error message. @i MSG is the message to display.
 func output_text(text: String) -> void:
 	if not text:
 		text = " "
@@ -95,6 +137,17 @@ func output_text(text: String) -> void:
 		text = _parse_error_string(text)
 	output_box.text = str(output_box.text, "\n", text)
 
+## Processes a command.
+# @desc Processes the command string @a text. If the string begins with a '/', it is
+#       treated as a builtin command. An error is emitted if the command does not exist
+#       in the database as it's configured.
+#
+#       Builtin Commands:
+#
+#       /help -- Display a list of supported commands@br
+#       /types -- Displays all the supported data types@br
+#       /print ARG -- Prints the @a ARG, interpreting as one of the supported data types@br
+#       /exit -- Deactivates the console
 func process_command(text: String) -> void:
 	var words = text.split(" ", false)
 	words = Array(words)
@@ -162,7 +215,7 @@ func _process_builtin_command(cmd: String, _args: Array):
 			for command in command_list:
 				output_text(str("\t", command.command_as_string()))
 			
-			output_text("\t/help\n\t/types\n\t/print var")
+			output_text("\t/help\n\t/types\n\t/print var\n/exit")
 		"/types":
 			if _args.size():
 				pass

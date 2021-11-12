@@ -36,7 +36,7 @@ window/stretch/aspect="keep_height"
 
 [editor_plugins]
 
-enabled=PoolStringArray( "res://addons/Todo_Manager/plugin.cfg", "res://addons/godot-plugin-refresher/plugin.cfg", "res://addons/snippets_plugin/plugin.cfg" )
+enabled=PoolStringArray( "res://addons/Todo_Manager/plugin.cfg", "res://addons/debug_console/plugin.cfg", "res://addons/godot-plugin-refresher/plugin.cfg", "res://addons/snippets_plugin/plugin.cfg", "res://addons/tiled_map_loader/plugin.cfg" )
 
 [importer_defaults]
 
@@ -44,6 +44,14 @@ texture={
 "detect_3d": false,
 "flags/filter": false,
 "process/fix_alpha_border": false
+}
+
+[input]
+
+ui_debug={
+"deadzone": 0.5,
+"events": [ Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":0,"alt":false,"shift":false,"control":false,"meta":false,"command":false,"pressed":false,"scancode":84,"physical_scancode":0,"unicode":0,"echo":false,"script":null)
+ ]
 }
 
 [logging]

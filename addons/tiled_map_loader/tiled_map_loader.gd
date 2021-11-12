@@ -264,7 +264,7 @@ func build_tileset_from_list(tilesets: Array, source_path: String, options: Dict
 	var result := TileSet.new()
 	
 	for tileset in tilesets:
-		var ts: Dictionary = tileset
+		var ts = tileset
 		var ts_source_path := source_path
 		
 		if 'source' in ts:
@@ -280,7 +280,6 @@ func build_tileset_from_list(tilesets: Array, source_path: String, options: Dict
 			
 			ts.firstgid = tileset.firstgid
 			
-			# NOTE: This is apparently used for templates later on.
 			_tileset_path_to_first_gid[ts_source_path] = ts.firstgid
 			
 		err = validate_tileset(ts)
@@ -350,21 +349,21 @@ func build_tileset_from_list(tilesets: Array, source_path: String, options: Dict
 					if not shape is Shape2D:
 						return shape # error happened
 					
+					var offset := Vector2(object.x, object.y)
+					var apply_offset: bool = options.get('apply_offset', false)
+					
+					if apply_offset:
+						offset += result.tile_get_texture_offset(gid)
+					
+#					if 'width' in object and 'height' in object:
+#						offset += Vector2(float(object.width) / 2.0, float(object.height) / 2.0)
+					
 					match object.type:
 						'navigation':
 							pass # TODO: add navigation to tileset
 						'occluder':
 							pass # TODO: add occluder to tileset
 						_:
-							var offset := Vector2(object.x, object.y)
-							var apply_offset: bool = options.get('apply_offset', false)
-							
-							if apply_offset:
-								offset += result.tile_get_texture_offset(gid)
-
-							if 'width' in object and 'height' in object:
-								offset += Vector2(float(object.width) / 2.0, float(object.height) / 2.0)
-							
 							result.tile_add_shape(gid, shape, Transform2D(0.0, offset), object.type == 'one_way')
 					
 			gid += 1
@@ -381,6 +380,15 @@ func build_tileset_from_list(tilesets: Array, source_path: String, options: Dict
 			result.resource_name = str(ts.name)
 		
 		return result
+
+func chunks_topleft(layer: Dictionary):
+	var result := Vector2()
+	
+	for chunk in layer.chunks:
+		result.x = min(result.x, chunk.x)
+		result.y = min(result.y, chunk.y)
+	
+	return result
 
 ## Create a layer.
 # @desc Returns a node corresponding to a type of layer being processed.
@@ -421,35 +429,57 @@ func create_layer(layer: Dictionary, map_data: Dictionary) -> int:
 			tilemap.cell_half_offset = map_data.map_offset
 			tilemap.cell_clip_uv = options.clip_uv
 			
+			# Layer offset
 			var offset := Vector2()
 			if 'startx' in layer:
 				offset.x = layer.startx
 			if 'starty' in layer:
 				offset.y = layer.starty
 			
-			tilemap.position = offset # + map_pos_offset
+			tilemap.position = offset + map_data.map_pos_offset
+			#tilemap.position = Vector2()
+			
+			var chunk_offset := Vector2()
+			var chunk_origin := Vector2()
 			
 			# Get array of chunks
 			var chunks := []
 			
 			if infinite:
 				chunks = layer.chunks
+				chunk_origin = chunks_topleft(layer)
 			else:
 				chunks = [layer]
 			
 			# Each chunk has an array of tile IDs
 			var count := 0
 			for chunk in chunks:
+				err = validate_chunk(chunk)
+				if err: return err
+				
 				var chunk_data = chunk.data
 				
+				chunk_offset = Vector2(chunk.x, chunk.y) - chunk_origin
+				
+#				var chunk_offset := Vector2(chunk.x, chunk.y)
+#				for c in 'xy':
+#					var value : int = chunk_offset[c]
+#					if value != 0:
+#						value = -value
+#					chunk_offset[c] = value
+				#print("chunk offset: ", chunk_offset)
+				
 				# If tile data is encoded in Base64
-				if 'encoding' in chunk and chunk.encoding == 'base64':
-					if 'compression' in chunk:
+				if 'encoding' in layer and layer.encoding == 'base64':
+					# Data is compressed
+					if 'compression' in layer:
 						var chunk_size := Vector2(chunk.width, chunk.height)
-						chunk_data = decompress_layer(chunk_data, chunk.compression, chunk_size)
+						chunk_data = decompress_layer(chunk_data, layer.compression, chunk_size)
 						if chunk_data is int: return chunk_data
 					else:
 						chunk_data = read_base64_layer(chunk_data)
+				
+				count = 0
 				
 				for tile_id in chunk_data:
 					var int_id: int = int(tile_id)
@@ -468,8 +498,14 @@ func create_layer(layer: Dictionary, map_data: Dictionary) -> int:
 					
 					var gid: int = int_id & ~(FLIPPED_VERTICALLY_FLAG | FLIPPED_HORIZONTALLY_FLAG | FLIPPED_DIAGONALLY_FLAG)
 					
-					var cell_x : int = cell_offset.x + chunk.x + (count % int(chunk.width))
-					var cell_y : int = cell_offset.y + chunk.y + int(count / chunk.width)
+					# In the case that any chunk has a negative offset, all tiles in the level need to be shifted right to push that chunk to the left edge of the level. Because if a tile cell index ends up negative, it gets clipped out of existence.
+					
+					var cell_x : int = cell_offset.x + (count % int(chunk.width)) + chunk_offset.x
+					var cell_y : int = cell_offset.y + int(count / chunk.width) + chunk_offset.y
+					
+#					if (count % 16) == 0:
+#						print("count = %d , cell = %s, chunk offset: %s" % [count, Vector2(cell_x, cell_y), chunk_offset])
+#						breakpoint
 					
 					tilemap.set_cell(cell_x, cell_y, gid, tile_flags.flipped_x, tile_flags.flipped_y, tile_flags.flipped_d)
 					
@@ -487,6 +523,67 @@ func create_layer(layer: Dictionary, map_data: Dictionary) -> int:
 			print_error("Unknown layer type '%s'." % type)
 	
 	return OK
+
+func decode_layer(layer_data: PoolByteArray) -> Array:
+	var result := []
+
+	for i in range(0, layer_data.size(), 4):
+		var num: int = (layer_data[i]) | (layer_data[i + 1] << 8) | (layer_data[i + 2] << 16) | (layer_data[i + 3] << 24)
+		result.push_back(num)
+
+	return result
+
+func decompress_layer(layer_data: String, compression: String, map_size: Vector2):
+	if compression != 'zlib' and compression != 'gzip':
+		print_error("Invalid compression '%s', must be zlib or gzip." % compression)
+		return ERR_INVALID_PARAMETER
+
+	var expected_size: int = int(map_size.x) * int(map_size.y) * 4
+	var compression_type := File.COMPRESSION_DEFLATE if compression == 'zlib' else File.COMPRESSION_GZIP
+	var data := Marshalls.base64_to_raw(layer_data).decompress(expected_size, compression_type)
+
+	return decode_layer(data)
+
+func get_custom_properties(properties: Dictionary, types: Dictionary) -> Dictionary:
+	var result := {}
+
+	for property in properties:
+		var value = null
+
+		match (types[property] as String).to_lower():
+			'bool':
+				value = bool(properties[property])
+			'int':
+				value = int(properties[property])
+			'float':
+				value = float(properties[property])
+			'color':
+				value = Color(properties[property])
+			_:
+				value = properties[property]
+
+		result[property] = value
+
+	return result
+
+func is_convex(vertices: PoolVector2Array):
+	var size := vertices.size()
+	
+	if size <= 3: return true
+	
+	var cp = 0
+	for i in range(0, size + 2):
+		var p1: Vector2 = vertices[i % size]
+		var p2: Vector2 = vertices[(i + 1) % size]
+		var p3: Vector2 = vertices[(i + 2) % size]
+		
+		var prev_cp = cp
+		cp = (p2.x - p1.x) * (p3.y - p2.y) - (p2.y - p1.y) * (p3.x - p2.x)
+		
+		if i > 0 and sign(cp) != sign(prev_cp):
+			return false
+	
+	return true
 
 func load_image(rel_path: String, source_path: String, options: Dictionary = {}):
 	var embed: bool = options.get('embed_internal_images', false)
@@ -538,48 +635,7 @@ static func print_error(err: String) -> void:
 		printerr(ERROR_PREFIX + err)
 	else:
 		push_error(ERROR_PREFIX + err)
-
-func decode_layer(layer_data: PoolByteArray) -> Array:
-	var result := []
-
-	for i in range(0, layer_data.size(), 4):
-		var num: int = (layer_data[i]) | (layer_data[i + 1] << 8) | (layer_data[i + 2] << 16) | (layer_data[i + 3] << 24)
-		result.push_back(num)
-
-	return result
-
-func decompress_layer(layer_data: String, compression: String, map_size: Vector2):
-	if compression != 'zlib' and compression != 'gzip':
-		print_error("Invalid compression '%s', must be zlib or gzip." % compression)
-		return ERR_INVALID_PARAMETER
-
-	var expected_size: int = int(map_size.x) * int(map_size.y) * 4
-	var compression_type := File.COMPRESSION_DEFLATE if compression == 'zlib' else File.COMPRESSION_GZIP
-	var data := Marshalls.base64_to_raw(layer_data).decompress(expected_size, compression_type)
-
-	return decode_layer(data)
-
-func get_custom_properties(properties: Dictionary, types: Dictionary) -> Dictionary:
-	var result := {}
-
-	for property in properties:
-		var value = null
-
-		match (types[property] as String).to_lower():
-			'bool':
-				value = bool(properties[property])
-			'int':
-				value = int(properties[property])
-			'float':
-				value = float(properties[property])
-			'color':
-				value = Color(properties[property])
-			_:
-				value = properties[property]
-
-		result[property] = value
-
-	return result
+		breakpoint
 
 func read_base64_layer(layer_data: String) -> Array:
 	var data := Marshalls.base64_to_raw(layer_data)
@@ -679,13 +735,49 @@ func set_options_defaults(options: Dictionary, params: Dictionary) -> void:
 		if not k in options:
 			options[k] = defaults[k]
 
+func set_tiled_properties_as_meta(object: Object, tiled_object: Dictionary) -> void:
+	for property in WHITELIST_PROPERTIES:
+		if property in tiled_object:
+			object.set_meta(property, tiled_object[property])
+
 func shape_from_object(object: Dictionary):
 	var shape = ERR_INVALID_DATA
 
 	set_obj_default_params(object)
 
 	if 'polygon' in object or 'polyline' in object:
-		pass # TODO: make a polygon or polyline shape
+		var vertices := PoolVector2Array()
+		
+		if 'polygon' in object:
+			for point in object.polygon:
+				vertices.push_back(Vector2(float(point.x), float(point.y)))
+		elif 'polyline' in object:
+			for point in object.polyline:
+				vertices.push_back(Vector2(float(point.x), float(point.y)))
+		
+		match object.type:
+			'navigation':
+				shape = NavigationPolygon.new()
+				shape.add_outline(vertices)
+				shape.make_polygons_from_outlines()
+			'occluder':
+				shape = OccluderPolygon2D.new()
+				shape.polygon = vertices
+				shape.closed = 'polygon' in object
+			_:
+				var temp = is_convex(vertices)
+				
+				if is_convex(vertices):
+					shape = ConvexPolygonShape2D.new()
+					shape.set_point_cloud(vertices)
+				else:
+					shape = ConcavePolygonShape2D.new()
+					var segments := [vertices[0]]
+					for i in range(1, vertices.size()):
+						segments.push_back(vertices[i])
+						segments.push_back(vertices[i])
+					segments.push_back(vertices[0])
+					shape.segments = PoolVector2Array(segments)
 	elif 'ellipse' in object:
 		if object.type in ['navigation', 'occluder']:
 			print_error("Invalid object type '%s'. Navigation and occluders do not accept ellipse shapes." % object.type)
@@ -726,10 +818,22 @@ func shape_from_object(object: Dictionary):
 
 	return shape
 
-func set_tiled_properties_as_meta(object: Object, tiled_object: Dictionary) -> void:
-	for property in WHITELIST_PROPERTIES:
-		if property in tiled_object:
-			object.set_meta(property, tiled_object[property])
+func validate_chunk(chunk: Dictionary) -> int:
+	if not 'data' in chunk:
+		print_error('Missing data chunk.')
+		return ERR_INVALID_DATA
+	
+	for attr in ['x', 'y']:
+		if not attr in chunk or not str(chunk[attr]).is_valid_integer():
+			print_error("Missing or invalid chunk %s offset." % attr)
+			return ERR_INVALID_DATA
+	
+	for attr in ['width', 'height']:
+		if not attr in chunk or not str(chunk[attr]).is_valid_integer() or int(chunk[attr]) <= 0:
+			print_error("Missing or invalid chunk %s." % attr)
+			return ERR_INVALID_DATA
+	
+	return OK
 
 func validate_layer(layer: Dictionary) -> int:
 	if not 'type' in layer:
