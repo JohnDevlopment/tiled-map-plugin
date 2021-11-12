@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.5" tiledversion="1.7.2" orientation="orthogonal" renderorder="right-down" width="46" height="26" tilewidth="18" tileheight="18" infinite="1" nextlayerid="2" nextobjectid="1">
+ <tileset firstgid="1" source="../tilesets/pixel_platformer.tsx"/>
+ <layer id="1" name="Tile Layer 1" width="46" height="26">
+  <data encoding="base64" compression="zlib">
+   <chunk x="0" y="0" width="16" height="16">
+   eJxjYBgaYBYQzwbiOUPE3OEKtgHxdiQMA8SG40kK7SdGfy2F+sWAWByIJaD8OhxiDFAxdCwFxNVALElATAIqRi6WpFA/CAMA6Kcd7g==
+  </chunk>
+   <chunk x="16" y="0" width="16" height="16">
+   eJxjYECAkwyUgVH91Nc/C4hnA/EcGtm/HQl/IUP/UAC1JKoTA2JxNCyBpA5ZHpuYFBBXo2FJHPL49NADAwALCx7T
+  </chunk>
+   <chunk x="32" y="0" width="16" height="16">
+   eJxjYGBgmAXEs4F4DsPwBiPFnyMJ1FKoXxyKJcjUXw3Fkkhm4cLY7KgmAWOzgxT92DAAXF4Tsw==
+  </chunk>
+   <chunk x="0" y="16" width="16" height="16">
+   eJyrZmBgqB7CuJ9CPApGwUgGANKBIAE=
+  </chunk>
+   <chunk x="16" y="16" width="16" height="16">
+   eJyrZmBgqB7CuJ9CPApGwUgGANKBIAE=
+  </chunk>
+   <chunk x="32" y="16" width="16" height="16">
+   eJyrZmBgqB7CuJ9CPApGwUgGANKBIAE=
+  </chunk>
+  </data>
+ </layer>
+</map>

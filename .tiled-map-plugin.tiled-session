@@ -3,7 +3,7 @@
         "height": 4300,
         "width": 2
     },
-    "activeFile": "assets/tilemaps/tiles-inf.json",
+    "activeFile": "assets/tilemaps/tiles-inf-compressed.tmx",
     "expandedProjectPaths": [
         "assets"
     ],
@@ -61,12 +61,20 @@
                 "y": 143.75
             }
         },
+        "assets/tilemaps/tiles-inf-compressed.tmx": {
+            "scale": 1,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 460.5,
+                "y": 340.5
+            }
+        },
         "assets/tilemaps/tiles-inf.json": {
             "scale": 2,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 4.75,
-                "y": -107.25
+                "x": 0.25,
+                "y": -144.25
             }
         },
         "assets/tilemaps/tiles-inf.tmx": {
@@ -99,9 +107,10 @@
         }
     },
     "last.imagePath": "/home/john/github/tiled-map-plugin/assets/textures/tilesets",
-    "map.fixedSize": true,
+    "map.fixedSize": false,
     "map.height": 10,
-    "map.lastUsedFormat": "json",
+    "map.lastUsedFormat": "tmx",
+    "map.layerDataFormat": null,
     "map.orientation": null,
     "map.tileHeight": 18,
     "map.tileWidth": 18,
@@ -109,14 +118,14 @@
     "mapScene.enableWorlds": false,
     "openFiles": [
         "assets/tilesets/pixel_platformer.tsx",
-        "assets/tilemaps/tiles-inf.json",
-        "assets/tilemaps/tiles-staggered-y.json"
+        "assets/tilemaps/tiles-inf-compressed.tmx"
     ],
     "project": ".tiled-map-plugin.tiled-project",
     "recentFiles": [
         "assets/tilesets/pixel_platformer.tsx",
-        "assets/tilemaps/tiles-staggered-y.json",
+        "assets/tilemaps/tiles-inf-compressed.tmx",
         "assets/tilemaps/tiles-inf.json",
+        "assets/tilemaps/tiles-staggered-y.json",
         "assets/tilemaps/test.json",
         "assets/tilemaps/tiles-5x5-hexagonal.json",
         "assets/tilemaps/tiles-inf.tmx",
@@ -124,8 +133,7 @@
         "assets/tilesets/tiles-inf.json",
         "/home/john/Godot_projects/mario_fan_game/assets/tilesets/grass.tsx",
         "/home/john/Godot_projects/mario_fan_game/assets/tilemaps/world1-1.tmx",
-        "/home/john/tiled/grass.tsx",
-        "/home/john/tiled/level.tmx"
+        "/home/john/tiled/grass.tsx"
     ],
     "tileset.lastUsedFormat": "tsx",
     "tileset.tileSize": {
