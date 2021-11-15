@@ -10,10 +10,6 @@ func _ready() -> void:
 	file_dialog = $FileDialog
 	input_file = $MarginContainer/VBoxContainer/FileLine/InputFile
 	user_notification = $UserNotification
-	
-	# HACK: This is for debugging purposes
-	if not Engine.editor_hint:
-		call_deferred('show_dialog')
 
 func open_file_dialog() -> void:
 	(file_dialog as Popup).popup_centered_clamped(Vector2(700, 400))
@@ -40,10 +36,6 @@ func _on_FileDialog_file_selected(path: String) -> void:
 
 func _on_hiding_dialog() -> void:
 	input_file.text = ''
-	
-	# HACK: This is for debugging purposes. When the dialog hides itself, the running instance quits.
-	if not Engine.editor_hint:
-		Application.exit(0)
 
 func _on_UserNotification_confirmed() -> void:
 	hide()
