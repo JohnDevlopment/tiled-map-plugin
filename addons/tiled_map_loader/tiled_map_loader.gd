@@ -33,7 +33,7 @@ const FLIPPED_VERTICALLY_FLAG: int = 0x40000000
 const FLIPPED_DIAGONALLY_FLAG: int = 0x20000000
 
 var _tileset_path_to_first_gid := {}
-#var _loaded_templates := {} # TODO: this is for when templates are handled
+var _loaded_templates := {}
 
 const WHITELIST_PROPERTIES := PoolStringArray([
 	"backgroundcolor",
@@ -122,6 +122,20 @@ func _get_property_list() -> Array:
 			usage = PROPERTY_USAGE_DEFAULT
 		}
 	]
+
+func _object_sorter(first: Dictionary, second: Dictionary) -> bool:
+	if first.y == second.y:
+		return first.id < second.id
+	return first.y < second.y
+
+static func apply_template(object, template_const):
+	for k in template_const:
+		if typeof(template_const[k]) == TYPE_DICTIONARY:
+			if not object.has(k):
+				object[k] = {}
+			apply_template(object[k], template_const[k])
+		elif not object.has(k):
+			object[k] = template_const[k]
 
 ## Builds a tilemap and adds it as a child.
 # @desc ...
@@ -217,7 +231,8 @@ func build(source_path: String, options: Dictionary) -> int:
 		infinite = map.infinite,
 		map_offset = map_offset,
 		map_pos_offset = map_pos_offset,
-		cell_offset = cell_offset
+		cell_offset = cell_offset,
+		source_path = source_path
 	}
 	
 	for layer in map.layers:
@@ -346,7 +361,7 @@ func build_tileset_from_list(tilesets: Array, source_path: String, options: Dict
 			if 'tiles' in ts and rel_id in ts.tiles and 'objectgroup' in ts.tiles[rel_id] and 'objects' in ts.tiles[rel_id].objectgroup:
 				for object in ts.tiles[rel_id].objectgroup.objects:
 					var shape = shape_from_object(object)
-					if not shape is Shape2D:
+					if not shape is Object:
 						return shape # error happened
 					
 					var offset := Vector2(object.x, object.y)
@@ -360,9 +375,11 @@ func build_tileset_from_list(tilesets: Array, source_path: String, options: Dict
 					
 					match object.type:
 						'navigation':
-							pass # TODO: add navigation to tileset
+							result.tile_set_navigation_polygon(gid, shape)
+							result.tile_set_navigation_polygon_offset(gid, offset)
 						'occluder':
-							pass # TODO: add occluder to tileset
+							result.tile_set_light_occluder(gid, shape)
+							result.tile_set_occluder_offset(gid, offset)
 						_:
 							result.tile_add_shape(gid, shape, Transform2D(0.0, offset), object.type == 'one_way')
 					
@@ -461,14 +478,6 @@ func create_layer(layer: Dictionary, map_data: Dictionary) -> int:
 				
 				chunk_offset = Vector2(chunk.x, chunk.y) - chunk_origin
 				
-#				var chunk_offset := Vector2(chunk.x, chunk.y)
-#				for c in 'xy':
-#					var value : int = chunk_offset[c]
-#					if value != 0:
-#						value = -value
-#					chunk_offset[c] = value
-				#print("chunk offset: ", chunk_offset)
-				
 				# If tile data is encoded in Base64
 				if 'encoding' in layer and layer.encoding == 'base64':
 					# Data is compressed
@@ -503,10 +512,6 @@ func create_layer(layer: Dictionary, map_data: Dictionary) -> int:
 					var cell_x : int = cell_offset.x + (count % int(chunk.width)) + chunk_offset.x
 					var cell_y : int = cell_offset.y + int(count / chunk.width) + chunk_offset.y
 					
-#					if (count % 16) == 0:
-#						print("count = %d , cell = %s, chunk offset: %s" % [count, Vector2(cell_x, cell_y), chunk_offset])
-#						breakpoint
-					
 					tilemap.set_cell(cell_x, cell_y, gid, tile_flags.flipped_x, tile_flags.flipped_y, tile_flags.flipped_d)
 					
 					count += 1
@@ -519,6 +524,63 @@ func create_layer(layer: Dictionary, map_data: Dictionary) -> int:
 			
 			# Finally, add the tilemap to this node
 			add_child(tilemap)
+		'objectgroup':
+			var object_layer := Node2D.new()
+			
+			if options.save_tiled_properties:
+				set_tiled_properties_as_meta(object_layer, layer)
+			
+			if options.custom_properties:
+				set_custom_properties(object_layer, layer)
+			
+			object_layer.modulate = Color(1, 1, 1, layer.opacity)
+			object_layer.visible = visible
+			add_child(object_layer)
+			object_layer.owner = self
+			
+			if 'name' in layer and not str(layer.name).empty():
+				object_layer.name = str(layer.name)
+			
+			if not 'draworder' in layer or layer.draworder == 'topdown':
+				(layer.objects as Array).sort_custom(self, '_object_sorter')
+			
+			for object in layer.objects:
+				if 'template' in object:
+					var template_file = object.template
+					var template_data_const = get_template(remove_filename_from_path(map_data.source_path) + template_file)
+					
+					if not template_data_const is Dictionary:
+						print_error("Error getting template for object with id %s" % map_data.id)
+						continue
+					
+					# Overwrite template data with current object data
+					apply_template(object, template_data_const)
+					
+					set_obj_default_params(object)
+				
+				if 'point' in object and object.point:
+					var point := Position2D.new()
+					if not 'x' in object or not 'y' in object:
+						print_error("Missing coordinates for point in object layer.")
+						continue
+					
+					point.position = Vector2(float(object.x), float(object.y))
+					point.visible = object.visible
+					
+					# Give a name to the point
+					var _name : String = object.get('name', '')
+					if _name.empty():
+						_name = str(object.get('id', ''))
+					if not _name.empty(): point.name = _name
+					
+					object_layer.add_child(point, !_name.empty())
+					point.owner = object_layer
+					
+					if options.save_tiled_properties:
+						set_tiled_properties_as_meta(point, object)
+					
+					if options.custom_properties:
+						set_custom_properties(point, object)
 		var type:
 			print_error("Unknown layer type '%s'." % type)
 	
@@ -565,6 +627,63 @@ func get_custom_properties(properties: Dictionary, types: Dictionary) -> Diction
 		result[property] = value
 
 	return result
+
+# TODO: implement get_first_gid_from_tileset_path
+
+static func get_filename_from_path(path: String) -> String:
+	var substrings := path.split('/')
+	var file : String = substrings[-1]
+	return file
+
+func get_template(path: String):
+	if not _loaded_templates.has(path):
+		var parser := XMLParser.new()
+		var err: int = parser.open(path)
+		if err:
+			#print_error("Failed to open TX file '%s'." % path)
+			return err
+		
+		var template = parse_template(parser, path)
+		if not template is Dictionary:
+			print_error("Error parsing TX file '%s'." % path)
+			return false
+		
+		_loaded_templates[path] = template
+	else:
+		# JSON
+		var file := File.new()
+		
+		var content = file.open(path, File.READ)
+		if content: return content
+
+		content = file.get_as_text()
+		file.close()
+
+		content = JSON.parse(content)
+		if content.error:
+			print_error("Error parsing JSON template file '%s': %s" % [path, content.error_string])
+			return content.error
+		else:
+			# Get dictionary from parser
+			content = content.result
+			if not content is Dictionary:
+				print_error("Error parsing JSON template file '%s': JSON object not a dictionary." % [path])
+				return ERR_INVALID_DATA
+		
+		var object : Dictionary = content.object
+		if object.has('gid') and object.has('tileset'):
+			pass
+			# TODO: get first gid from embedded tileset
+		
+		_loaded_templates[path] = object
+	
+	var dict : Dictionary = _loaded_templates[path]
+	var dictCopy : Dictionary = {} # = dict.duplicate(false)
+	
+	for k in dict:
+		dictCopy[k] = dict[k]
+	
+	return dictCopy
 
 func is_convex(vertices: PoolVector2Array):
 	var size := vertices.size()
@@ -627,6 +746,34 @@ func load_image(rel_path: String, source_path: String, options: Dictionary = {})
 
 	return image
 
+func parse_template(parser: XMLParser, path: String) -> Dictionary:
+	var err := OK
+	var data := {id = 0}
+	var tileset_gid_increment := 0
+	
+	err = parser.read()
+	while err == OK:
+		if parser.get_node_type() == XMLParser.NODE_ELEMENT_END:
+			if parser.get_node_name() == 'template':
+				break
+		elif parser.get_node_type() == XMLParser.NODE_ELEMENT:
+			assert(parser.get_node_name() != 'tileset', "'tileset' currently not supported in template")
+			
+			match parser.get_node_name():
+				'tileset':
+					pass # TODO: implement tileset in template
+				'object':
+					var object : Dictionary = TiledXMLToDict.parse_object(parser)
+					for k in object:
+						data[k] = object[k]
+		
+		err = parser.read()
+	
+	if data.has('gid') and tileset_gid_increment:
+		data.gid += tileset_gid_increment
+	
+	return data
+
 ## Prints an error.
 # @desc Prints @a err with an already-defined prefix in one of two ways depending
 #       on where it is called, either in the editor or in a running instance.
@@ -635,7 +782,6 @@ static func print_error(err: String) -> void:
 		printerr(ERROR_PREFIX + err)
 	else:
 		push_error(ERROR_PREFIX + err)
-		breakpoint
 
 func read_base64_layer(layer_data: String) -> Array:
 	var data := Marshalls.base64_to_raw(layer_data)
@@ -705,10 +851,15 @@ func read_tileset_file(path: String):
 
 	return content.result
 
+static func remove_filename_from_path(path: String) -> String:
+	var file_name := get_filename_from_path(path)
+	var string_size : int = path.length() - file_name.length()
+	var file_path : String = path.substr(0, string_size)
+	return file_path
+
 func reset_global_members() -> void:
 	_tileset_path_to_first_gid = {}
-	# TODO: this is for when templates are handled
-#	_loaded_templates = {}
+	_loaded_templates = {}
 
 func set_custom_properties(object: Object, tiled_object: Dictionary) -> void:
 	if not 'properties' in tiled_object or not 'propertytypes' in tiled_object:
@@ -805,7 +956,21 @@ func shape_from_object(object: Dictionary):
 		var size := Vector2(object.width, object.height)
 
 		if object.type in ['navigation', 'occluder']:
-			pass # TODO: make navigation and occluder shapes
+			var vertices := PoolVector2Array([
+				Vector2(),
+				Vector2(size.x, 0),
+				size,
+				Vector2(0, size.y)
+			])
+			
+			if object.type == 'navigation':
+				shape = NavigationPolygon.new()
+				shape.set_vertices(vertices)
+				shape.add_outline(vertices)
+				shape.make_polygons_from_outlines()
+			else:
+				shape = OccluderPolygon2D.new()
+				shape.polygon = vertices
 		else:
 			shape = ConvexPolygonShape2D.new()
 			var points := PoolVector2Array([
