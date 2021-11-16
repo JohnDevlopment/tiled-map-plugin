@@ -120,7 +120,7 @@ func parse_image_layer(parser: XMLParser):
 	
 	return data
 
-func parse_object(parser: XMLParser):
+static func parse_object(parser: XMLParser):
 	var data := attributes_to_dict(parser)
 	var err := OK
 
