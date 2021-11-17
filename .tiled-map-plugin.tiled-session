@@ -3,12 +3,12 @@
         "height": 4300,
         "width": 2
     },
-    "activeFile": "assets/tilemaps/tiles-inf-compressed.tmx",
+    "activeFile": "assets/tilemaps/objects.json",
     "expandedProjectPaths": [
-        "assets/tilemaps",
         "assets",
-        "assets/tilesets",
-        "assets/tilemaps/templates"
+        "assets/tilemaps",
+        "assets/tilemaps/templates",
+        "assets/tilesets"
     ],
     "file.lastUsedOpenFilter": "All Files (*)",
     "fileStates": {
@@ -40,12 +40,20 @@
                 "y": 295.5595886267393
             }
         },
-        "assets/tilemaps/objects.json": {
-            "scale": 3,
-            "selectedLayer": 1,
+        "assets/tilemaps/objects-and-tiles.tmx": {
+            "scale": 1.5,
+            "selectedLayer": 0,
             "viewCenter": {
-                "x": 178.16666666666669,
-                "y": 144.83333333333334
+                "x": 269.66666666666663,
+                "y": 135
+            }
+        },
+        "assets/tilemaps/objects.json": {
+            "scale": 1.5,
+            "selectedLayer": 2,
+            "viewCenter": {
+                "x": 345.66666666666663,
+                "y": 145.66666666666669
             }
         },
         "assets/tilemaps/test.json": {
@@ -77,7 +85,7 @@
             "selectedLayer": 0,
             "viewCenter": {
                 "x": 371.66666666666663,
-                "y": 167.66666666666669
+                "y": 168.33333333333334
             }
         },
         "assets/tilemaps/tiles-inf.json": {
@@ -118,24 +126,25 @@
         }
     },
     "last.imagePath": "/home/john/github/tiled-map-plugin/assets/textures/tilesets",
-    "last.objectTemplatePath": "/home/john/github/tiled-map-plugin/assets/tilemaps/templates",
+    "last.objectTemplatePath": "/home/john/Godot_projects/tiled-map-plugin/assets/tilemaps/templates",
     "map.fixedSize": true,
     "map.height": 10,
-    "map.lastUsedFormat": "json",
+    "map.lastUsedFormat": "tmx",
     "map.layerDataFormat": null,
     "map.orientation": null,
     "map.tileHeight": 18,
     "map.tileWidth": 18,
-    "map.width": 10,
+    "map.width": 30,
     "mapScene.enableWorlds": false,
     "openFiles": [
         "assets/tilesets/pixel_platformer.tsx",
-        "assets/tilemaps/objects.json",
-        "assets/tilemaps/tiles-inf-compressed.tmx"
+        "assets/tilemaps/objects-and-tiles.tmx",
+        "assets/tilemaps/objects.json"
     ],
     "project": ".tiled-map-plugin.tiled-project",
     "recentFiles": [
         "assets/tilesets/pixel_platformer.tsx",
+        "assets/tilemaps/objects-and-tiles.tmx",
         "assets/tilemaps/objects.json",
         "assets/tilemaps/tiles-inf-compressed.tmx",
         "assets/tilemaps/tiles-inf.json",
@@ -145,8 +154,7 @@
         "assets/tilemaps/tiles-inf.tmx",
         "assets/tilemaps/tiles-5x5.json",
         "assets/tilesets/tiles-inf.json",
-        "/home/john/Godot_projects/mario_fan_game/assets/tilesets/grass.tsx",
-        "/home/john/Godot_projects/mario_fan_game/assets/tilemaps/world1-1.tmx"
+        "/home/john/Godot_projects/mario_fan_game/assets/tilesets/grass.tsx"
     ],
     "tileset.lastUsedFormat": "tsx",
     "tileset.tileSize": {

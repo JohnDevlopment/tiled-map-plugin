@@ -2,7 +2,7 @@
 <template>
  <object type="enemy">
   <properties>
-   <property name="id" value=""/>
+   <property name="class" value=""/>
   </properties>
   <point/>
  </object>

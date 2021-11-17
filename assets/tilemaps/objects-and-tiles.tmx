@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.5" tiledversion="1.7.2" orientation="orthogonal" renderorder="right-down" width="30" height="15" tilewidth="18" tileheight="18" infinite="0" nextlayerid="3" nextobjectid="3">
+ <tileset firstgid="1" source="../tilesets/pixel_platformer.tsx"/>
+ <layer id="1" name="Tile Layer 1" width="30" height="15">
+  <data encoding="base64" compression="zlib">
+   eJxjYBgFo2DkAjEgFodiCQLy1MRSQFwNxZIE5AcjZhsEbhj17/DDAxXOABeva88=
+  </data>
+ </layer>
+ <objectgroup id="2" name="Object Layer 1">
+  <object id="1" template="templates/enemy.tx" x="270" y="108">
+   <properties>
+    <property name="id" value="slime"/>
+   </properties>
+  </object>
+  <object id="2" template="templates/player.tx" x="36" y="126"/>
+ </objectgroup>
+</map>
