@@ -3,6 +3,13 @@
 tool
 extends Node2D
 
+# 'Set Tiled Properties,Set Custom Properties,Clip UV'
+enum {
+	SET_TILED_PROPERTIES = 0x01,
+	SET_CUSTOM_PROPERTIES = 0x02,
+	CLIP_UV = 0x04
+}
+
 ## A class used to read Tiled files and convert into a dictionary.
 # @type GDScript
 const TiledXMLToDict = preload('res://addons/tiled_map_loader/tiled_xml_to_dict.gd')
@@ -18,6 +25,10 @@ var collision_mask := 1
 ## A path to a Tiled tilemap file.
 # @type String
 var tilemap := ''
+
+## Tilemap properties as bitmask
+# @type int
+var tilemap_properties := 0
 
 var correct_map := false
 
@@ -67,8 +78,8 @@ func _get(property: String):
 			return collision_layer
 		'collision_mask':
 			return collision_mask
-		'options/correct_map':
-			return correct_map
+		'options/tilemap_properties':
+			return tilemap_properties
 
 func _set(property: String, value) -> bool:
 	match property:
@@ -78,8 +89,8 @@ func _set(property: String, value) -> bool:
 			collision_layer = value
 		'collision_mask':
 			collision_mask = value
-		'options/correct_map':
-			correct_map = value
+		'options/tilemap_properties':
+			tilemap_properties = value
 		_:
 			return false
 
@@ -117,9 +128,11 @@ func _get_property_list() -> Array:
 			hint = PROPERTY_HINT_LAYERS_2D_PHYSICS
 		},
 		{
-			name = 'options/correct_map',
-			type = TYPE_BOOL,
-			usage = PROPERTY_USAGE_DEFAULT
+			name = 'options/tilemap_properties',
+			type = TYPE_INT,
+			usage = PROPERTY_USAGE_DEFAULT,
+			hint = PROPERTY_HINT_FLAGS,
+			hint_string = 'Set Tiled Properties,Set Custom Properties,Clip UV'
 		}
 	]
 
@@ -169,7 +182,6 @@ func _fix_json_properties(data):
 				data.propertytypes = propertytypes
 			else:
 				_fix_json_properties(data[k])
-	
 
 static func apply_template(object, template_const):
 	for k in template_const:
@@ -285,7 +297,14 @@ func build(source_path: String, options: Dictionary) -> int:
 	return OK
 
 ## Builds a tilemap using the properties defined in this class.
-func build_auto(options: Dictionary = {}) -> int: return build(tilemap, options)
+func build_auto() -> int:
+	var options := {
+		save_tiled_properties = bool(tilemap_properties & SET_TILED_PROPERTIES),
+		custom_properties = bool(tilemap_properties & SET_CUSTOM_PROPERTIES),
+		clip_uv = bool(tilemap_properties & CLIP_UV)
+	}
+	
+	return build(tilemap, options)
 
 ## Builds a @class TileSet resource from a TSX file.
 # @desc Reads a TSX file located at @a source_path and returns a @class TileSet resource based
@@ -577,7 +596,7 @@ func create_layer(layer: Dictionary, map_data: Dictionary) -> int:
 			if options.custom_properties:
 				set_custom_properties(object_layer, layer)
 			
-			object_layer.modulate = Color(1, 1, 1, layer.opacity)
+			object_layer.modulate = Color(1, 1, 1, opacity)
 			object_layer.visible = visible
 			add_child(object_layer)
 			object_layer.owner = self
@@ -681,57 +700,58 @@ static func get_filename_from_path(path: String) -> String:
 
 func get_template(path: String):
 	if not _loaded_templates.has(path):
-		var parser := XMLParser.new()
-		var err: int = parser.open(path)
-		if err:
-			#print_error("Failed to open TX file '%s'." % path)
-			return err
-		
-		var template = parse_template(parser, path)
-		if not template is Dictionary:
-			print_error("Error parsing TX file '%s'." % path)
-			return false
-		
-		_loaded_templates[path] = template
-	else:
-		# JSON
-		var file := File.new()
-		
-		var content = file.open(path, File.READ)
-		if content: return content
-
-		content = file.get_as_text()
-		file.close()
-
-		content = JSON.parse(content)
-		if content.error:
-			print_error("Error parsing JSON template file '%s': %s" % [path, content.error_string])
-			return content.error
-		else:
-			# Get dictionary from parser
-			content = content.result
-			if not content is Dictionary:
-				print_error("Error parsing JSON template file '%s': JSON object not a dictionary." % [path])
-				return ERR_INVALID_DATA
-		
-		var object : Dictionary = content.object
-		if object.has('gid') and object.has('tileset'):
-			pass
-			# TODO: get first gid from embedded tileset
-		
-		if object.has('properties'):
-			var properties : Dictionary
-			var propertytypes : Dictionary
+		if path.get_extension().nocasecmp_to('tsx'):
+			var parser := XMLParser.new()
+			var err: int = parser.open(path)
+			if err:
+				#print_error("Failed to open TX file '%s'." % path)
+				return err
 			
-			# object.properties is array
-			# property = {name = ..., type = ..., value = ...}
-			for property in object.properties:
-				# Want properties = { "id": 1 , "name": "name" , ... }
-				var prop_name : String = property.name
-				var prop_value = _convert_value(property.value, property.type)
-				properties[prop_name] = prop_value
-		
-		_loaded_templates[path] = object
+			var template = parse_template(parser, path)
+			if not template is Dictionary:
+				print_error("Error parsing TX file '%s'." % path)
+				return false
+			
+			_loaded_templates[path] = template
+		else:
+			# JSON
+			var file := File.new()
+			
+			var err := file.open(path, File.READ)
+			if err: return err
+			
+			var content
+			
+			var result := JSON.parse(file.get_as_text())
+			file.close()
+			if result.error:
+				print_error("Error parsing JSON template file '%s': %s" % [path, result.error_string])
+				return result.error
+			else:
+				# Get dictionary from parser
+				content = content.result
+				if not content is Dictionary:
+					print_error("Error parsing JSON template file '%s': JSON object not a dictionary." % [path])
+					return ERR_INVALID_DATA
+			
+			var object : Dictionary = content.object
+			if object.has('gid') and object.has('tileset'):
+				pass
+				# TODO: get first gid from embedded tileset
+			
+			if object.has('properties'):
+				var properties : Dictionary
+				var propertytypes : Dictionary
+				
+				# object.properties is array
+				# property = {name = ..., type = ..., value = ...}
+				for property in object.properties:
+					# Want properties = { "id": 1 , "name": "name" , ... }
+					var prop_name : String = property.name
+					var prop_value = _convert_value(property.value, property.type)
+					properties[prop_name] = prop_value
+			
+			_loaded_templates[path] = object
 	
 	var dict : Dictionary = _loaded_templates[path]
 	var dictCopy : Dictionary = {} # = dict.duplicate(false)
