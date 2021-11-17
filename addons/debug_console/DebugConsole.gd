@@ -194,6 +194,8 @@ func _process_args(commandline: String):
 	
 	var words := commandline.split(' ')
 	for word in words:
+		if word.empty(): continue
+		
 		var first_char : String = word[0]
 		var last_char : String = word[-1]
 		
