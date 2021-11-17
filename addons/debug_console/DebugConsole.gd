@@ -53,12 +53,13 @@ onready var input_field = $VBoxContainer/InputField
 onready var output_box = $VBoxContainer/HBoxContainer/Output
 onready var command_handler = $CommandHandler
 
-#const _builtin_commands: = [
-#	[ "/help",  [],   [] ],
-#	[ "/print", [-1], ["value"] ],
-#	[ "/types", [],   [] ],
-#	[ "/exit", [], [] ]
-#]
+const _BUILTIN_COMMANDS: = [
+	['/help', []],
+	['/types', []],
+	['/print', [{ param = 'value', type = -1 }]],
+	['/list_remote_nodes', []],
+	['/exit', []]
+]
 
 var command_list: = []
 var active: = false
@@ -79,12 +80,14 @@ func _ready():
 		queue_free()
 		return
 	
-	command_handler.remote_nodes = remote_nodes
+	for path in remote_nodes:
+		var remote_node = get_node(path)
+		(command_handler.remote_nodes as Array).push_back(remote_node)
 	
 	_init_command_map()
 	output_box.add_keyword_color("Error", Color("#ff0000"))
 	
-	for type in ["variant", "bool", "float", "int", "nil"]:
+	for type in ["variant", "bool", "float", "int", "nil", "string"]:
 		output_box.add_keyword_color(type, Color("#8EA2FF"))
 	output_box.add_keyword_color("vector2", Color("#43E44A"))
 	set_process(false)
@@ -149,15 +152,16 @@ func output_text(text: String) -> void:
 #       /print ARG -- Prints the @a ARG, interpreting as one of the supported data types@br
 #       /exit -- Deactivates the console
 func process_command(text: String) -> void:
-	var words = text.split(" ", false)
-	words = Array(words)
+	var args = _process_args(text)
+	if args is String:
+		output_text("@error:" + args)
+		return
+	if args.size() == 0: return
 	
-	if words.size() == 0: return
-	
-	var command_name: String = words.pop_front()
+	var command_name: String = args.pop_front()
 	
 	if command_name.begins_with("/"):
-		_process_builtin_command(command_name, words)
+		_process_builtin_command(command_name, args)
 		return
 	
 	var idx: int = -1
@@ -170,7 +174,7 @@ func process_command(text: String) -> void:
 			break
 	
 	if idx >= 0:
-		var parsed_args = command.parse_args(words)
+		var parsed_args = command.parse_args(args)
 		
 		if (parsed_args is ErrorInfo):
 			output_text("Error: " + parsed_args.info)
@@ -181,6 +185,44 @@ func process_command(text: String) -> void:
 
 	output_text("Error: command %s does not exist" % command_name)
 
+func _process_args(commandline: String):
+	var args := []
+	
+	var current_arg := ''
+	var spaced_string := false
+	var delmiter := ''
+	
+	var words := commandline.split(' ')
+	for word in words:
+		var first_char : String = word[0]
+		var last_char : String = word[-1]
+		
+		if first_char == '"' or first_char == "'":
+			delmiter = first_char
+			if last_char == delmiter:
+				current_arg = word.substr(1, word.length() - 2)
+				args.push_back(current_arg)
+			else:
+				spaced_string = true
+				current_arg = (word as String).substr(1) + ' '
+		elif last_char == delmiter:
+			delmiter = ''
+			spaced_string = false
+			current_arg += word.substr(0, word.length() - 1)
+			
+			args.push_back(current_arg)
+			#args.push_back(current_arg.trim_suffix(' '))
+		else:
+			if spaced_string:
+				current_arg += " %s " % word
+			else:
+				args.push_back(word)
+	
+	if spaced_string:
+		return "Invalid string argument '%s': No closing quote character." % current_arg
+	
+	return args
+
 func _parse_error_string(s: String):
 	if s == "": return
 	var words: Array = s.split(":", false)
@@ -190,10 +232,10 @@ func _parse_error_string(s: String):
 			s = "Error: expected {0} arguments but got {1}"
 			s = s.format([words[0], words[1]])
 		"@arrayneed":
-			s = "array '{0}' requires {1} elements"
+			s = "Error: array '{0}' requires {1} elements"
 			s = s.format([words[0], words[1]])
 		"@error":
-			s = "Error: " + words[0]
+			s = "Error: " + PoolStringArray(words).join(' ')
 		"@exit":
 			s = "Exit Console"
 			if not words.empty():
@@ -215,7 +257,12 @@ func _process_builtin_command(cmd: String, _args: Array):
 			for command in command_list:
 				output_text(str("\t", command.command_as_string()))
 			
-			output_text("\t/help\n\t/types\n\t/print var\n/exit")
+			output_text("Builtin Commands:")
+			
+			for command_def in _BUILTIN_COMMANDS:
+				var command := StringCommand.new(command_def[0], command_def[1])
+				output_text(str("\t", command.command_as_string()))
+			
 		"/types":
 			if _args.size():
 				pass
@@ -247,6 +294,13 @@ func _process_builtin_command(cmd: String, _args: Array):
 				output_text("Error: no argument provided")
 		"/exit":
 			deactivate()
+		"/list_remote_nodes":
+			var list := PoolStringArray()
+			
+			for node in command_handler.remote_nodes:
+				list.append(str(node))
+			
+			output_text(list.join("\n"))
 		_:
 			output_text("Error: invalid command '%s'" % cmd)
 	

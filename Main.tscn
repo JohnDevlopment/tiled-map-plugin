@@ -9,14 +9,26 @@
 script/source = "extends Node
 
 const valid_commands := [
-	[\"test\", [], []]
+	[\"get_property\", [TYPE_STRING, TYPE_STRING], [\"node_path\", \"property\"]]
 ]
 
 var remote_nodes := []
 var parent_node: Node
 
-func test() -> String:
-	return \"Called the test function.\"
+func get_property(node_path: String, property: String) -> String:
+	var root : Node = remote_nodes[0]
+	
+	var node : Node = root.get_node_or_null(node_path)
+	if not is_instance_valid(node):
+		return \"@error:Invalid node path '%s'.\" % node_path
+	
+	var value
+	if property.find(':') > 0:
+		value = node.get_indexed(property)
+	else:
+		value = node.get(property)
+	
+	return \"Node %s property '%s': '%s'\" % [node_path, property, value]
 "
 
 [node name="Main" type="Node2D"]
@@ -33,6 +45,8 @@ collision_layer = 1
 collision_mask = 0
 options/correct_map = false
 
+[node name="Tween" type="Tween" parent="TiledMapLoader"]
+
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
 
 [node name="DebugConsole" parent="CanvasLayer" instance=ExtResource( 4 )]
@@ -40,6 +54,7 @@ visible = false
 margin_right = -195.0
 margin_bottom = -106.0
 command_script = SubResource( 1 )
+remote_nodes = [ NodePath("../..") ]
 
 [node name="TileMap" parent="." instance=ExtResource( 5 )]
 visible = false

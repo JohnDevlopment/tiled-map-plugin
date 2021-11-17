@@ -128,6 +128,49 @@ func _object_sorter(first: Dictionary, second: Dictionary) -> bool:
 		return first.id < second.id
 	return first.y < second.y
 
+static func _despace(text: String) -> String:
+	return text.replace(' ', '')
+
+static func _convert_value(value: String, type: String):
+	match type:
+		'int':
+			return int(value)
+		'float':
+			return float(value)
+		'bool':
+			return bool(value)
+		'color':
+			return Color(value)
+	
+	return value
+
+func _fix_json_properties(data):
+	var data_type : int = typeof(data)
+	
+	if data_type == TYPE_ARRAY:
+		for element in data:
+			_fix_json_properties(element)
+	elif data_type == TYPE_DICTIONARY:
+		for k in data:
+			if k == 'properties':
+				var properties : Dictionary
+				var propertytypes : Dictionary
+				
+				# data.properties is array
+				# property = {name = ..., type = ..., value = ...}
+				for property in data.properties:
+					# Want properties = { "id": 1 , "name": "name" , ... }
+					var prop_name : String = property.name
+					var prop_value = _convert_value(property.value, property.type)
+					properties[prop_name] = prop_value
+					propertytypes[prop_name] = property.type
+				
+				data.properties = properties
+				data.propertytypes = propertytypes
+			else:
+				_fix_json_properties(data[k])
+	
+
 static func apply_template(object, template_const):
 	for k in template_const:
 		if typeof(template_const[k]) == TYPE_DICTIONARY:
@@ -439,7 +482,7 @@ func create_layer(layer: Dictionary, map_data: Dictionary) -> int:
 			tilemap.collision_layer = collision_layer
 			tilemap.collision_mask = collision_mask
 			tilemap.cell_y_sort = true
-			tilemap.name = layer.name
+			tilemap.name = _despace(layer.name)
 			tilemap.modulate = Color(1, 1, 1, opacity)
 			tilemap.tile_set = tileset
 			tilemap.cell_tile_origin = TileMap.TILE_ORIGIN_BOTTOM_LEFT
@@ -524,6 +567,7 @@ func create_layer(layer: Dictionary, map_data: Dictionary) -> int:
 			
 			# Finally, add the tilemap to this node
 			add_child(tilemap)
+			tilemap.owner = self
 		'objectgroup':
 			var object_layer := Node2D.new()
 			
@@ -539,7 +583,7 @@ func create_layer(layer: Dictionary, map_data: Dictionary) -> int:
 			object_layer.owner = self
 			
 			if 'name' in layer and not str(layer.name).empty():
-				object_layer.name = str(layer.name)
+				object_layer.name = _despace(str(layer.name))
 			
 			if not 'draworder' in layer or layer.draworder == 'topdown':
 				(layer.objects as Array).sort_custom(self, '_object_sorter')
@@ -571,7 +615,7 @@ func create_layer(layer: Dictionary, map_data: Dictionary) -> int:
 					var _name : String = object.get('name', '')
 					if _name.empty():
 						_name = str(object.get('id', ''))
-					if not _name.empty(): point.name = _name
+					if not _name.empty(): point.name = _despace(_name)
 					
 					object_layer.add_child(point, !_name.empty())
 					point.owner = object_layer
@@ -674,6 +718,18 @@ func get_template(path: String):
 		if object.has('gid') and object.has('tileset'):
 			pass
 			# TODO: get first gid from embedded tileset
+		
+		if object.has('properties'):
+			var properties : Dictionary
+			var propertytypes : Dictionary
+			
+			# object.properties is array
+			# property = {name = ..., type = ..., value = ...}
+			for property in object.properties:
+				# Want properties = { "id": 1 , "name": "name" , ... }
+				var prop_name : String = property.name
+				var prop_value = _convert_value(property.value, property.type)
+				properties[prop_name] = prop_value
 		
 		_loaded_templates[path] = object
 	
@@ -815,7 +871,9 @@ func read_tilemap_file(path: String):
 	if content.error:
 		print_error("Error parsing JSON file '%s': %s" % [path, content.error_string])
 		return content.error
-
+	
+	_fix_json_properties(content.result)
+	
 	return content.result
 
 ## Reads a Tiled tileset file.
